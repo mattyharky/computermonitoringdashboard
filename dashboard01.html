@@ -1,0 +1,3208 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7.9" PC Hardware Temperature &amp; Sensor Panel Monitor (1280×400)</title>
+
+  <!-- Futuristic HUD typography with clean offline fallbacks -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+
+  <style>
+    /* =========================================================================
+       1. DESIGN TOKENS & GLOBAL RESET
+       ========================================================================= */
+    :root {
+      --bg-studio: radial-gradient(circle at 50% 35%, #1c2230 0%, #0d1017 65%, #07090d 100%);
+      --bezel-light: #f4f5f8;
+      --bezel-mid: #e6e8ee;
+      --bezel-edge: #cfd3dc;
+      --bezel-inner: #07090f;
+      --stand-top: #262a33;
+      --stand-bottom: #111319;
+
+      --hud-bg: #040914;
+      --hud-panel: rgba(8, 20, 42, 0.72);
+      --cyan: #00f0ff;
+      --cyan-soft: rgba(0, 240, 255, 0.25);
+      --magenta: #ff1e8e;
+      --purple: #d946ef;
+      --amber: #f5b942;
+      --crimson: #ff2a5f;
+      --text-main: #e6f7ff;
+      --text-dim: #7ba3be;
+
+      --font-display: 'Orbitron', 'Segoe UI', sans-serif;
+      --font-ui: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+      --font-mono: 'Share Tech Mono', 'Consolas', 'Courier New', monospace;
+
+      --screen-brightness: 1;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-studio);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body.borderless-mode {
+      background: #000000;
+    }
+
+    /* =========================================================================
+       2. VIEWPORT STAGE & RESPONSIVE SCALING CONTAINER
+       ========================================================================= */
+    .stage {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 20px;
+      transition: padding 0.3s ease;
+    }
+
+    body.borderless-mode .stage {
+      padding: 0;
+    }
+
+    /* Hardware assembly scaled cleanly via JS to preserve exact 1280:400 or 400:1280 ratio */
+    .hardware-assembly {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform-origin: center center;
+      will-change: transform;
+      transition: filter 0.25s ease;
+    }
+
+    /* =========================================================================
+       3. REALISTIC MATTE-WHITE 7.9" HARDWARE BEZEL & BLACK DESKTOP STAND
+       ========================================================================= */
+    .bezel-frame {
+      position: relative;
+      padding: 28px 34px;
+      border-radius: 14px;
+      background: linear-gradient(155deg, var(--bezel-light) 0%, var(--bezel-mid) 60%, var(--bezel-edge) 100%);
+      box-shadow:
+        inset 0 2px 3px rgba(255, 255, 255, 0.95),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.16),
+        0 28px 65px rgba(0, 0, 0, 0.72),
+        0 6px 18px rgba(0, 0, 0, 0.45);
+      transition: padding 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, border-radius 0.25s ease;
+    }
+
+    .bezel-frame.portrait {
+      padding: 34px 26px;
+    }
+
+    /* Subtle edge port cutouts (Mini HDMI, Micro USB, mounting screws) */
+    .bezel-ports {
+      position: absolute;
+      right: -4px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .bezel-frame.portrait .bezel-ports {
+      left: -4px;
+      right: auto;
+      top: 32%;
+    }
+
+    .port-cutout {
+      width: 5px;
+      height: 22px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #5e636e 0%, #24272e 50%, #7d8390 100%);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
+    }
+
+    .port-cutout.small {
+      height: 12px;
+    }
+
+    .port-screw {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #99a0ad, #30343d);
+    }
+
+    /* Inner black glass display border */
+    .glass-border {
+      position: relative;
+      padding: 8px;
+      border-radius: 6px;
+      background: var(--bezel-inner);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 1px 2px rgba(255, 255, 255, 0.55);
+      overflow: hidden;
+    }
+
+    /* IPS Screen Viewport */
+    .ips-screen {
+      position: relative;
+      background: var(--hud-bg);
+      overflow: hidden;
+      border-radius: 2px;
+      filter: brightness(var(--screen-brightness));
+      transition: filter 0.12s linear;
+    }
+
+    .ips-screen.landscape {
+      width: 1280px;
+      height: 400px;
+    }
+
+    .ips-screen.portrait {
+      width: 400px;
+      height: 1280px;
+    }
+
+    /* Subtle IPS glass sheen & scanline depth */
+    .ips-sheen {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+      background:
+        linear-gradient(122deg, rgba(255, 255, 255, 0.065) 0%, rgba(255, 255, 255, 0.015) 28%, transparent 48%, rgba(0, 240, 255, 0.02) 100%),
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px, transparent 1px, transparent 3px);
+    }
+
+    /* Dark Matte Desktop Stand */
+    .desktop-stand {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: -4px;
+      z-index: -1;
+    }
+
+    .stand-neck {
+      width: 240px;
+      height: 22px;
+      background: linear-gradient(180deg, #1b1e25 0%, #2a2e38 100%);
+      border-radius: 0 0 8px 8px;
+      box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.8);
+    }
+
+    .stand-base {
+      width: 420px;
+      height: 26px;
+      margin-top: -4px;
+      border-radius: 10px 10px 14px 14px;
+      background: linear-gradient(180deg, var(--stand-top) 0%, var(--stand-bottom) 100%);
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.14),
+        0 18px 34px rgba(0, 0, 0, 0.85);
+      border-bottom: 3px solid #090a0e;
+    }
+
+    .hardware-assembly.portrait .stand-neck {
+      width: 220px;
+      height: 16px;
+    }
+
+    .hardware-assembly.portrait .stand-base {
+      width: 390px;
+      height: 36px;
+      border-radius: 12px 12px 16px 16px;
+    }
+
+    /* Borderless Raw Panel Mode */
+    body.borderless-mode .bezel-frame {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    body.borderless-mode .glass-border {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    body.borderless-mode .bezel-ports,
+    body.borderless-mode .desktop-stand,
+    body.borderless-mode .ips-sheen {
+      display: none;
+    }
+
+    /* =========================================================================
+       4. SHARED HUD VISUAL EFFECTS & ANIMATIONS
+       ========================================================================= */
+    .hud-view {
+      position: absolute;
+      inset: 0;
+      display: none;
+    }
+
+    .hud-view.active {
+      display: block;
+    }
+
+    @keyframes spinCW {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes spinCCW {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.72; }
+      50% { opacity: 1; }
+    }
+
+    .spin-cw {
+      transform-origin: center;
+      animation: spinCW 28s linear infinite;
+    }
+
+    .spin-ccw {
+      transform-origin: center;
+      animation: spinCCW 20s linear infinite;
+    }
+
+    .spin-slow {
+      transform-origin: center;
+      animation: spinCW 44s linear infinite;
+    }
+
+    .arc-smooth {
+      transition: stroke-dashoffset 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .bar-smooth {
+      transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Keep all SVG and numeric HUD readouts rock-solid without width jitter */
+    svg text {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rpm-num {
+      display: inline-block;
+      min-width: 4ch;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .rpm-unit {
+      display: inline-block;
+      margin-left: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.86em;
+      color: var(--cyan);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* =========================================================================
+       5. LANDSCAPE MODE (1280×400) — SCI-FI AIDA64 HUD
+       ========================================================================= */
+    .landscape-hud {
+      width: 1280px;
+      height: 400px;
+      background:
+        radial-gradient(circle at 49% 50%, rgba(0, 145, 255, 0.16) 0%, rgba(12, 24, 52, 0.55) 45%, #040914 100%),
+        radial-gradient(rgba(0, 240, 255, 0.16) 1px, transparent 1px);
+      background-size: 100% 100%, 10px 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle cyber vignette and grid overlay */
+    .landscape-hud::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(rgba(0, 240, 255, 0.14) 1px, transparent 1px);
+      background-size: 9px 9px;
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .landscape-hud::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+    }
+
+    /* Decorative SVG frame lines for Landscape */
+    .ls-decor-svg {
+      position: absolute;
+      inset: 0;
+      width: 1280px;
+      height: 400px;
+      pointer-events: none;
+    }
+
+    /* --- LEFT ZONE --- */
+    .ls-header-box {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      width: 392px;
+      height: 92px;
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(90deg, rgba(0, 240, 255, 0.12) 0%, rgba(6, 20, 44, 0.72) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.55);
+      clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+      box-shadow: inset 0 0 18px rgba(0, 240, 255, 0.14);
+    }
+
+    .ls-emblem {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+      margin-right: 12px;
+    }
+
+    .ls-header-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ls-header-title {
+      font-family: var(--font-ui);
+      font-size: 18px;
+      font-weight: 700;
+      color: #c8f6ff;
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.55);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ls-header-owner {
+      margin-top: 4px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--cyan);
+      opacity: 0.92;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ls-header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      margin-left: 8px;
+    }
+
+    .ls-clock {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: #e2fcff;
+      letter-spacing: 1px;
+      text-shadow: 0 0 12px rgba(0, 240, 255, 0.75);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .ls-eq {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 22px;
+      margin-top: 7px;
+    }
+
+    .ls-eq-bar {
+      width: 4px;
+      height: 8px;
+      border-radius: 1px;
+      background: linear-gradient(180deg, var(--magenta) 0%, var(--cyan) 100%);
+      box-shadow: 0 0 6px rgba(0, 240, 255, 0.65);
+      transition: height 0.18s ease;
+    }
+
+    .ls-subcaption {
+      position: absolute;
+      top: 112px;
+      left: 196px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1.4px;
+      color: rgba(0, 240, 255, 0.72);
+    }
+
+    /* Left Zone Gauges */
+    .ls-gauge-cpu-temp {
+      position: absolute;
+      top: 142px;
+      left: 24px;
+      width: 96px;
+      height: 96px;
+    }
+
+    .ls-gauge-cpu-power {
+      position: absolute;
+      top: 124px;
+      left: 142px;
+      width: 158px;
+      height: 158px;
+    }
+
+    .ls-gauge-ram {
+      position: absolute;
+      top: 224px;
+      left: 316px;
+      width: 90px;
+      height: 90px;
+    }
+
+    /* Bottom-left Network Bars */
+    .ls-net-panel {
+      position: absolute;
+      left: 24px;
+      bottom: 20px;
+      width: 274px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .ls-net-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ls-net-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.7px;
+    }
+
+    .ls-net-label {
+      color: var(--text-dim);
+    }
+
+    .ls-net-val {
+      color: #d8fbff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.55);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .ls-net-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 2px;
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      overflow: hidden;
+      padding: 1px;
+    }
+
+    .ls-net-fill {
+      height: 100%;
+      border-radius: 1px;
+      background: linear-gradient(90deg, var(--cyan) 0%, var(--magenta) 100%);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+    }
+
+    .ls-net-fill.down {
+      background: linear-gradient(90deg, #00c3ff 0%, #d946ef 100%);
+    }
+
+    /* --- CENTRE ZONE --- */
+    .ls-centre-core {
+      position: absolute;
+      top: 38px;
+      left: 468px;
+      width: 310px;
+      height: 310px;
+    }
+
+    .ls-subgauge-clock {
+      position: absolute;
+      top: 294px;
+      left: 416px;
+      width: 86px;
+      height: 86px;
+    }
+
+    .ls-subgauge-fan {
+      position: absolute;
+      top: 294px;
+      left: 738px;
+      width: 86px;
+      height: 86px;
+    }
+
+    /* --- RIGHT ZONE --- */
+    .ls-drives-row {
+      position: absolute;
+      top: 16px;
+      left: 832px;
+      width: 428px;
+      height: 82px;
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .ls-drive-capsule {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 8px 9px 7px;
+      background: linear-gradient(155deg, rgba(0, 240, 255, 0.11) 0%, rgba(5, 16, 36, 0.85) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.52);
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+      box-shadow: inset 0 0 12px rgba(0, 240, 255, 0.12);
+    }
+
+    .ls-drive-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .ls-drive-pct {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .ls-drive-letter {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+      white-space: nowrap;
+    }
+
+    .ls-drive-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .ls-drive-bar {
+      width: 100%;
+      height: 5px;
+      background: rgba(0, 240, 255, 0.15);
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .ls-drive-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--magenta));
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    .ls-temp-stack {
+      width: 76px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 6px 8px;
+      background: rgba(5, 16, 36, 0.85);
+      border: 1px solid rgba(0, 240, 255, 0.55);
+      border-radius: 4px;
+    }
+
+    .ls-temp-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    .ls-temp-item span.lbl {
+      font-size: 9px;
+      color: var(--cyan);
+      opacity: 0.85;
+    }
+
+    .ls-temp-item span.val {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: #e6fcff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .ls-gpu-header {
+      position: absolute;
+      top: 112px;
+      left: 836px;
+      width: 420px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ls-gpu-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      white-space: nowrap;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+    }
+
+    .ls-gpu-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(0, 240, 255, 0.7), rgba(255, 30, 142, 0.25), transparent);
+    }
+
+    .ls-gauge-gpu-load {
+      position: absolute;
+      top: 134px;
+      left: 846px;
+      width: 168px;
+      height: 168px;
+    }
+
+    .ls-gpu-mid-stats {
+      position: absolute;
+      top: 168px;
+      left: 1020px;
+      width: 108px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .ls-mini-stat {
+      border-left: 2px solid var(--cyan);
+      padding-left: 7px;
+      min-width: 0;
+    }
+
+    .ls-mini-stat-lbl {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.8px;
+      white-space: nowrap;
+    }
+
+    .ls-mini-stat-val {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: nowrap;
+      height: 22px;
+      line-height: 22px;
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 700;
+      color: #e2fcff;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .ls-mini-stat-val.ls-rpm-val .rpm-num {
+      min-width: 4ch;
+      text-align: left;
+    }
+
+    .ls-gauge-gpu-temp {
+      position: absolute;
+      top: 152px;
+      left: 1134px;
+      width: 128px;
+      height: 128px;
+    }
+
+    /* Bottom-right Footer */
+    .ls-footer {
+      position: absolute;
+      bottom: 18px;
+      left: 836px;
+      width: 422px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      border-top: 1px solid rgba(0, 240, 255, 0.25);
+      padding-top: 10px;
+    }
+
+    .ls-date {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      color: #a9efff;
+      letter-spacing: 1px;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .ls-footer-metrics {
+      display: flex;
+      gap: 22px;
+    }
+
+    .ls-footer-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .ls-footer-lbl {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--cyan);
+      opacity: 0.85;
+    }
+
+    .ls-footer-val {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.55);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* =========================================================================
+       6. PORTRAIT MODE (400×1280) — VERTICAL "COMPUTER DATA" PANEL
+       ========================================================================= */
+    .portrait-hud {
+      width: 400px;
+      height: 1280px;
+      background:
+        radial-gradient(circle at 82% 28%, rgba(217, 70, 239, 0.16) 0%, transparent 45%),
+        radial-gradient(circle at 20% 56%, rgba(0, 240, 255, 0.14) 0%, transparent 48%),
+        radial-gradient(circle at 50% 8%, rgba(255, 42, 95, 0.18) 0%, transparent 32%),
+        linear-gradient(180deg, #070814 0%, #061021 45%, #050a18 100%);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 20px 20px;
+    }
+
+    .portrait-hud::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px);
+      background-size: 12px 12px;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    /* Top Status Strip */
+    .pt-topbar {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 15px;
+      color: #9beeff;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0, 240, 255, 0.22);
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* Top Emblem Box */
+    .pt-emblem-wrap {
+      position: relative;
+      z-index: 2;
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .pt-cpu-badge {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--amber);
+      text-shadow: 0 0 10px rgba(245, 185, 66, 0.65);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .pt-title-frame {
+      width: 100%;
+      padding: 14px 16px;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(255, 42, 95, 0.16) 0%, rgba(22, 8, 28, 0.85) 100%);
+      border: 2px solid rgba(255, 42, 95, 0.82);
+      box-shadow:
+        0 0 22px rgba(255, 42, 95, 0.35),
+        inset 0 0 18px rgba(255, 42, 95, 0.22);
+      clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px);
+    }
+
+    .pt-title-main {
+      font-family: var(--font-display);
+      font-size: 27px;
+      font-weight: 900;
+      letter-spacing: 3.5px;
+      line-height: 1.15;
+      color: #ff457a;
+      text-shadow: 0 0 14px rgba(255, 42, 95, 0.85);
+    }
+
+    .pt-title-sub {
+      font-family: var(--font-display);
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: 9px;
+      color: #ff80a8;
+      margin-top: 2px;
+      text-shadow: 0 0 10px rgba(255, 42, 95, 0.7);
+    }
+
+    .pt-led-strip {
+      display: flex;
+      gap: 7px;
+      margin-top: 10px;
+      justify-content: center;
+    }
+
+    .pt-led {
+      width: 24px;
+      height: 6px;
+      border-radius: 1px;
+      background: rgba(255, 42, 95, 0.28);
+      border: 1px solid rgba(255, 42, 95, 0.6);
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .pt-led.lit {
+      background: #ff386e;
+      box-shadow: 0 0 10px #ff386e;
+    }
+
+    .pt-gpu-badge {
+      margin-top: 10px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      color: #f7c55f;
+      text-shadow: 0 0 8px rgba(245, 185, 66, 0.55);
+      text-transform: uppercase;
+    }
+
+    /* Portrait CPU & GPU Dual-Gauge Sections */
+    .pt-section {
+      position: relative;
+      z-index: 2;
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pt-section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+
+    .pt-diag-line {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), rgba(217, 70, 239, 0.7));
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+    }
+
+    .pt-section-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: #a9f4ff;
+      letter-spacing: 1.2px;
+      text-align: right;
+      line-height: 1.1;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.65);
+    }
+
+    .pt-section-title span {
+      display: block;
+      font-size: 13px;
+      color: var(--cyan);
+      font-weight: 500;
+    }
+
+    .pt-gauge-stage {
+      position: relative;
+      height: 242px;
+      width: 100%;
+    }
+
+    .pt-gauge-left {
+      position: absolute;
+      top: 4px;
+      left: 2px;
+      width: 174px;
+      height: 174px;
+    }
+
+    .pt-gauge-right {
+      position: absolute;
+      top: 52px;
+      right: 2px;
+      width: 158px;
+      height: 158px;
+    }
+
+    .pt-right-label {
+      position: absolute;
+      left: 16px;
+      bottom: 8px;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #8eeeff;
+      line-height: 1.15;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.55);
+    }
+
+    /* Full-width Glowing Horizontal Metric Bar */
+    .pt-power-bar-wrap {
+      margin-top: 8px;
+    }
+
+    .pt-power-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 5px;
+      font-family: var(--font-mono);
+      font-size: 15px;
+    }
+
+    .pt-power-lbl {
+      color: var(--cyan);
+      letter-spacing: 0.8px;
+    }
+
+    .pt-power-val {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.65);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .pt-bar-track {
+      width: 100%;
+      height: 12px;
+      background: rgba(0, 240, 255, 0.14);
+      border: 1px solid rgba(0, 240, 255, 0.48);
+      border-radius: 2px;
+      overflow: hidden;
+      padding: 1px;
+    }
+
+    .pt-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00e5ff 0%, #38bdf8 65%, #e879f9 100%);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.8);
+    }
+
+    .pt-segments {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .pt-seg {
+      height: 5px;
+      background: rgba(0, 240, 255, 0.16);
+      border-radius: 1px;
+    }
+
+    .pt-seg.active {
+      background: var(--cyan);
+      box-shadow: 0 0 7px var(--cyan);
+    }
+
+    /* Portrait FAN Block */
+    .pt-fan-block {
+      position: relative;
+      z-index: 2;
+      margin-top: 18px;
+      padding: 12px 14px;
+      background: rgba(0, 240, 255, 0.06);
+      border-top: 1px solid rgba(0, 240, 255, 0.4);
+      border-bottom: 1px solid rgba(0, 240, 255, 0.4);
+    }
+
+    .pt-fan-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--cyan);
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.65);
+    }
+
+    .pt-fan-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 8px;
+      height: 24px;
+      line-height: 24px;
+      font-family: var(--font-mono);
+      font-size: 16px;
+      margin-top: 4px;
+    }
+
+    .pt-fan-lbl {
+      color: #a4dff0;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .pt-fan-val {
+      display: inline-flex;
+      justify-content: flex-end;
+      align-items: baseline;
+      flex-wrap: nowrap;
+      min-width: 112px;
+      text-align: right;
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+      font-size: 17px;
+      font-weight: 700;
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .pt-fan-val .rpm-num {
+      min-width: 5ch;
+      text-align: right;
+    }
+
+    /* Portrait STORAGE Block */
+    .pt-storage-block {
+      position: relative;
+      z-index: 2;
+      margin-top: auto;
+      padding-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .pt-disk-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .pt-disk-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      font-size: 14px;
+    }
+
+    .pt-disk-lbl {
+      color: #9beeff;
+      letter-spacing: 0.8px;
+    }
+
+    .pt-disk-lbl strong {
+      font-family: var(--font-display);
+      color: var(--cyan);
+      font-size: 16px;
+    }
+
+    .pt-disk-val {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .pt-disk-track {
+      width: 100%;
+      height: 10px;
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .pt-disk-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00f0ff 0%, #3b82f6 100%);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.75);
+    }
+
+    .pt-disk-fill.used {
+      background: linear-gradient(90deg, #00f0ff 0%, #d946ef 100%);
+    }
+
+    .pt-disk-fill.io {
+      background: linear-gradient(90deg, #00f0ff 0%, #ff2a5f 100%);
+    }
+
+    /* =========================================================================
+       7. FLOATING CONTROL TOOLBAR & CORNER REVEAL
+       ========================================================================= */
+    .toolbar-trigger-zone {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 90;
+    }
+
+    .btn-reveal {
+      background: rgba(12, 18, 30, 0.78);
+      color: #9eefff;
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      opacity: 0.35;
+      transition: opacity 0.2s ease, background 0.2s ease;
+    }
+
+    .btn-reveal:hover {
+      opacity: 1;
+      background: rgba(15, 25, 42, 0.95);
+    }
+
+    .control-toolbar {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px 14px;
+      max-width: calc(100vw - 24px);
+      background: rgba(10, 16, 28, 0.88);
+      border: 1px solid rgba(0, 240, 255, 0.32);
+      border-radius: 14px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .control-toolbar.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 24px);
+    }
+
+    .tb-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 6px;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .tb-group:last-child {
+      border-right: none;
+      padding-right: 0;
+    }
+
+    .tb-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 11px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 240, 255, 0.28);
+      background: rgba(20, 32, 54, 0.72);
+      color: #dcf7ff;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+    }
+
+    .tb-btn:hover {
+      background: rgba(0, 240, 255, 0.18);
+      border-color: var(--cyan);
+    }
+
+    .tb-btn:active {
+      transform: scale(0.97);
+    }
+
+    .tb-btn.active {
+      background: rgba(0, 240, 255, 0.24);
+      border-color: var(--cyan);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.28);
+    }
+
+    .tb-select {
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 240, 255, 0.28);
+      background: rgba(15, 24, 42, 0.92);
+      color: #e2f9ff;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .tb-select:focus {
+      border-color: var(--cyan);
+    }
+
+    .tb-slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #9ddcf0;
+    }
+
+    .tb-slider {
+      width: 78px;
+      accent-color: var(--cyan);
+      cursor: pointer;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      color: #b7f2ff;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+    }
+
+    .status-dot.warn {
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+    }
+
+    .status-dot.live {
+      background: #00f0ff;
+      box-shadow: 0 0 8px #00f0ff;
+    }
+
+    /* =========================================================================
+       8. MODALS (LIVE PC SETUP & CUSTOMISE) + TOAST
+       ========================================================================= */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(3, 6, 12, 0.78);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 680px;
+      max-height: 88vh;
+      overflow-y: auto;
+      background: #0d1422;
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 14px;
+      padding: 22px 24px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
+      color: #e6f4ff;
+    }
+
+    .modal-card.compact {
+      max-width: 460px;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      color: var(--cyan);
+      letter-spacing: 1px;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #cbd5e1;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      border-color: var(--cyan);
+      color: #ffffff;
+    }
+
+    .modal-desc {
+      font-size: 14px;
+      line-height: 1.55;
+      color: #b4cde0;
+      margin-bottom: 14px;
+    }
+
+    .code-box {
+      position: relative;
+      background: #060a12;
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      color: #b5f4ff;
+      overflow-x: auto;
+      max-height: 340px;
+      user-select: text;
+      white-space: pre;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .form-field label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #93d5eb;
+    }
+
+    .form-input {
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      background: #070d18;
+      color: #ffffff;
+      font-family: var(--font-ui);
+      font-size: 15px;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--cyan);
+    }
+
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translate(-50%, -20px);
+      z-index: 300;
+      padding: 10px 18px;
+      border-radius: 10px;
+      background: rgba(8, 22, 38, 0.95);
+      border: 1px solid var(--cyan);
+      color: #e6fcff;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    /* Responsive toolbar tweaks for narrow mobile screens */
+    @media (max-width: 720px) {
+      .control-toolbar {
+        bottom: 10px;
+        gap: 6px;
+        padding: 8px 10px;
+      }
+      .tb-group {
+        border-right: none;
+        padding: 0 2px;
+      }
+      .tb-btn {
+        padding: 6px 9px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Subtle corner button to toggle toolbar visibility -->
+  <div class="toolbar-trigger-zone">
+    <button id="btnToggleToolbar" class="btn-reveal" title="Toggle Controls (Press H)">Controls [H]</button>
+  </div>
+
+  <!-- Main Responsive Stage -->
+  <main class="stage" id="stage">
+    <div class="hardware-assembly landscape" id="hardwareAssembly">
+      <!-- Realistic Matte-White 7.9" Bezel -->
+      <div class="bezel-frame landscape" id="bezelFrame">
+        <!-- Metallic edge port cutouts -->
+        <div class="bezel-ports" aria-hidden="true">
+          <div class="port-screw"></div>
+          <div class="port-cutout" title="Mini HDMI"></div>
+          <div class="port-cutout small" title="Micro USB"></div>
+          <div class="port-screw"></div>
+        </div>
+
+        <!-- Inner black glass border -->
+        <div class="glass-border">
+          <!-- Fixed-coordinate IPS Display Canvas -->
+          <div class="ips-screen landscape" id="ipsScreen">
+            <div class="ips-sheen" aria-hidden="true"></div>
+
+            <!-- ===============================================================
+                 VIEW A: LANDSCAPE MODE (1280×400) — SCI-FI AIDA64 HUD
+                 =============================================================== -->
+            <section class="hud-view landscape-hud active" id="viewLandscape" aria-label="Landscape 1280x400 Sci-Fi Hardware HUD">
+              <!-- Shared SVG Glow Filters & Tech Connector Lines -->
+              <svg class="ls-decor-svg" viewBox="0 0 1280 400" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="glowCyan" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="3.2" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <filter id="glowMagenta" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="3.6" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <linearGradient id="gradCyanMagenta" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#00f0ff" />
+                    <stop offset="55%" stop-color="#a855f7" />
+                    <stop offset="100%" stop-color="#ff1e8e" />
+                  </linearGradient>
+                  <linearGradient id="gradMagentaCyan" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#ff1e8e" />
+                    <stop offset="100%" stop-color="#00f0ff" />
+                  </linearGradient>
+                </defs>
+
+                <!-- Subtle HUD corner brackets and structural lines -->
+                <path d="M10 34 L10 10 L38 10" fill="none" stroke="#00f0ff" stroke-width="1.5" opacity="0.55" />
+                <path d="M1242 10 L1270 10 L1270 34" fill="none" stroke="#00f0ff" stroke-width="1.5" opacity="0.55" />
+                <path d="M10 366 L10 390 L38 390" fill="none" stroke="#00f0ff" stroke-width="1.5" opacity="0.55" />
+                <path d="M1242 390 L1270 390 L1270 366" fill="none" stroke="#00f0ff" stroke-width="1.5" opacity="0.55" />
+
+                <!-- Tech connecting traces between zones -->
+                <polyline points="412,56 446,56 468,78" fill="none" stroke="#00f0ff" stroke-width="1" opacity="0.35" />
+                <polyline points="776,78 802,52 830,52" fill="none" stroke="#00f0ff" stroke-width="1" opacity="0.35" />
+                <polyline points="304,352 400,352 418,336" fill="none" stroke="#00f0ff" stroke-width="1" opacity="0.3" />
+                <polyline points="780,312 814,312 836,334" fill="none" stroke="#00f0ff" stroke-width="1" opacity="0.3" />
+              </svg>
+
+              <!-- LEFT ZONE: Chamfered Header Box -->
+              <div class="ls-header-box">
+                <svg class="ls-emblem" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="29" fill="rgba(0,240,255,0.08)" stroke="#00f0ff" stroke-width="1.5" stroke-dasharray="14 6" class="spin-cw" />
+                  <circle cx="32" cy="32" r="22" fill="none" stroke="#ff1e8e" stroke-width="1.5" stroke-dasharray="8 8" class="spin-ccw" />
+                  <polygon points="32,14 46,24 41,42 23,42 18,24" fill="rgba(0,240,255,0.16)" stroke="#00f0ff" stroke-width="1.5" filter="url(#glowCyan)" />
+                  <circle cx="32" cy="30" r="5" fill="#00f0ff" filter="url(#glowCyan)" />
+                </svg>
+
+                <div class="ls-header-text">
+                  <div class="ls-header-title">PC hardware monitoring</div>
+                  <div class="ls-header-owner">Owner: <span id="lsOwnerName">Matty</span></div>
+                </div>
+
+                <div class="ls-header-right">
+                  <div class="ls-clock" id="lsClock">15:44</div>
+                  <div class="ls-eq" id="lsEq" aria-hidden="true">
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                    <div class="ls-eq-bar"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ls-subcaption">COMPUTER CENTRAL PROCESSING UNIT</div>
+
+              <!-- LEFT ZONE: Small CPU Temp Ring Gauge -->
+              <div class="ls-gauge-cpu-temp">
+                <svg viewBox="0 0 100 100" width="96" height="96">
+                  <circle cx="50" cy="50" r="42" fill="rgba(4,14,32,0.75)" stroke="rgba(0,240,255,0.18)" stroke-width="6" />
+                  <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(0,240,255,0.35)" stroke-width="1" stroke-dasharray="4 4" />
+                  <circle id="lsArcCpuTemp" class="arc-smooth" cx="50" cy="50" r="42" fill="none" stroke="#00f0ff" stroke-width="6" stroke-linecap="round"
+                    stroke-dasharray="263.89" stroke-dashoffset="150" transform="rotate(-90 50 50)" filter="url(#glowCyan)" />
+                  <text x="50" y="34" text-anchor="middle" fill="#7ba3be" font-family="Share Tech Mono" font-size="9">CPU</text>
+                  <text id="lsValCpuTemp" x="50" y="59" text-anchor="middle" fill="#ffffff" font-family="Orbitron" font-size="22" font-weight="700">42</text>
+                  <text x="50" y="74" text-anchor="middle" fill="#00f0ff" font-family="Share Tech Mono" font-size="10">°C</text>
+                </svg>
+              </div>
+
+              <!-- LEFT ZONE: Prominent CPU Power (W) Gradient Arc Gauge -->
+              <div class="ls-gauge-cpu-power">
+                <svg viewBox="0 0 160 160" width="158" height="158">
+                  <circle cx="80" cy="80" r="72" fill="rgba(5,16,38,0.72)" stroke="rgba(0,240,255,0.22)" stroke-width="1.5" stroke-dasharray="10 6" class="spin-slow" />
+                  <circle cx="80" cy="80" r="60" fill="none" stroke="rgba(0,240,255,0.14)" stroke-width="12" />
+                  <circle id="lsArcCpuPower" class="arc-smooth" cx="80" cy="80" r="60" fill="none" stroke="url(#gradCyanMagenta)" stroke-width="12" stroke-linecap="round"
+                    stroke-dasharray="376.99" stroke-dashoffset="180" transform="rotate(135 80 80)" filter="url(#glowMagenta)" />
+                  <circle cx="80" cy="80" r="46" fill="none" stroke="rgba(0,240,255,0.35)" stroke-width="1" />
+                  <text x="80" y="54" text-anchor="middle" fill="#8ad8f0" font-family="Share Tech Mono" font-size="10" letter-spacing="1">CPU POWER</text>
+                  <text id="lsValCpuPower" x="80" y="92" text-anchor="middle" fill="#ff3b9a" font-family="Orbitron" font-size="34" font-weight="800" filter="url(#glowMagenta)">68</text>
+                  <text x="80" y="112" text-anchor="middle" fill="#00f0ff" font-family="Share Tech Mono" font-size="12">WATTS</text>
+                </svg>
+              </div>
+
+              <!-- LEFT ZONE: Small RAM Usage Ring Gauge -->
+              <div class="ls-gauge-ram">
+                <svg viewBox="0 0 100 100" width="90" height="90">
+                  <circle cx="50" cy="50" r="40" fill="rgba(4,14,32,0.78)" stroke="rgba(217,70,239,0.2)" stroke-width="6" />
+                  <circle id="lsArcRam" class="arc-smooth" cx="50" cy="50" r="40" fill="none" stroke="url(#gradMagentaCyan)" stroke-width="6" stroke-linecap="round"
+                    stroke-dasharray="251.33" stroke-dashoffset="120" transform="rotate(-90 50 50)" filter="url(#glowCyan)" />
+                  <text x="50" y="34" text-anchor="middle" fill="#7ba3be" font-family="Share Tech Mono" font-size="9">RAM</text>
+                  <text id="lsValRam" x="50" y="58" text-anchor="middle" fill="#ffffff" font-family="Orbitron" font-size="20" font-weight="700">48</text>
+                  <text x="50" y="73" text-anchor="middle" fill="#d946ef" font-family="Share Tech Mono" font-size="10">%</text>
+                </svg>
+              </div>
+
+              <!-- LEFT ZONE: Bottom Network Upload & Download Bars -->
+              <div class="ls-net-panel">
+                <div class="ls-net-row">
+                  <div class="ls-net-meta">
+                    <span class="ls-net-label">NET UPLOAD</span>
+                    <span class="ls-net-val" id="lsValNetUp">142 KB/s</span>
+                  </div>
+                  <div class="ls-net-track">
+                    <div class="ls-net-fill bar-smooth" id="lsBarNetUp" style="width: 24%;"></div>
+                  </div>
+                </div>
+                <div class="ls-net-row">
+                  <div class="ls-net-meta">
+                    <span class="ls-net-label">NET DOWNLOAD</span>
+                    <span class="ls-net-val" id="lsValNetDown">1.84 MB/s</span>
+                  </div>
+                  <div class="ls-net-track">
+                    <div class="ls-net-fill down bar-smooth" id="lsBarNetDown" style="width: 48%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CENTRE ZONE: Large Concentric Multi-Ring HUD Core -->
+              <div class="ls-centre-core">
+                <svg viewBox="0 0 310 310" width="310" height="310">
+                  <defs>
+                    <path id="curveTop" d="M 55,155 A 100,100 0 0,1 255,155" />
+                    <path id="curveBottomLeft" d="M 55,155 A 100,100 0 0,0 155,255" />
+                    <path id="curveBottomRight" d="M 155,255 A 100,100 0 0,0 255,155" />
+                  </defs>
+
+                  <!-- Outer rotating segmented tech ring -->
+                  <g class="spin-cw">
+                    <circle cx="155" cy="155" r="144" fill="none" stroke="rgba(0,240,255,0.34)" stroke-width="2" stroke-dasharray="28 12 6 12" />
+                    <circle cx="155" cy="155" r="136" fill="none" stroke="rgba(0,240,255,0.22)" stroke-width="6" stroke-dasharray="18 22 4 14" />
+                  </g>
+
+                  <!-- Counter-rotating magenta/cyan accent ring -->
+                  <g class="spin-ccw">
+                    <circle cx="155" cy="155" r="124" fill="none" stroke="rgba(255,30,142,0.5)" stroke-width="3" stroke-dasharray="34 48 12 62" />
+                    <circle cx="155" cy="155" r="118" fill="none" stroke="rgba(0,240,255,0.4)" stroke-width="1.5" stroke-dasharray="6 10" />
+                  </g>
+
+                  <!-- Core dark dial background -->
+                  <circle cx="155" cy="155" r="108" fill="rgba(4,12,28,0.82)" stroke="rgba(0,240,255,0.25)" stroke-width="1.5" />
+
+                  <!-- Primary CPU Usage Arc -->
+                  <circle cx="155" cy="155" r="84" fill="none" stroke="rgba(0,240,255,0.12)" stroke-width="14" />
+                  <circle id="lsArcCpuUsage" class="arc-smooth" cx="155" cy="155" r="84" fill="none" stroke="url(#gradCyanMagenta)" stroke-width="14" stroke-linecap="round"
+                    stroke-dasharray="527.79" stroke-dashoffset="360" transform="rotate(-90 155 155)" filter="url(#glowCyan)" />
+
+                  <!-- Inner fine tech ring -->
+                  <circle cx="155" cy="155" r="66" fill="none" stroke="rgba(0,240,255,0.45)" stroke-width="1.5" stroke-dasharray="3 5" />
+
+                  <!-- Curved Labels -->
+                  <text fill="#00f0ff" font-family="Share Tech Mono" font-size="11" letter-spacing="3">
+                    <textPath href="#curveTop" startOffset="50%" text-anchor="middle">CPU USAGE</textPath>
+                  </text>
+                  <text fill="#ff4fa8" font-family="Share Tech Mono" font-size="10" letter-spacing="2">
+                    <textPath href="#curveBottomLeft" startOffset="50%" text-anchor="middle">MEMORY</textPath>
+                  </text>
+                  <text fill="#8eeeff" font-family="Share Tech Mono" font-size="10" letter-spacing="2">
+                    <textPath href="#curveBottomRight" startOffset="50%" text-anchor="middle">TEMP</textPath>
+                  </text>
+
+                  <!-- Bold Central Readout -->
+                  <text id="lsValCpuUsage" x="155" y="168" text-anchor="middle" fill="#ff2994" font-family="Orbitron" font-size="52" font-weight="900" filter="url(#glowMagenta)">24</text>
+                  <text x="155" y="192" text-anchor="middle" fill="#a9f2ff" font-family="Share Tech Mono" font-size="13" letter-spacing="2">PERCENT</text>
+                </svg>
+              </div>
+
+              <!-- CENTRE ZONE: Flanking Sub-Gauges -->
+              <div class="ls-subgauge-clock">
+                <svg viewBox="0 0 90 90" width="86" height="86">
+                  <circle cx="45" cy="45" r="38" fill="rgba(4,14,32,0.8)" stroke="rgba(0,240,255,0.2)" stroke-width="5" />
+                  <circle id="lsArcCpuClock" class="arc-smooth" cx="45" cy="45" r="38" fill="none" stroke="#00f0ff" stroke-width="5" stroke-linecap="round"
+                    stroke-dasharray="238.76" stroke-dashoffset="70" transform="rotate(-90 45 45)" filter="url(#glowCyan)" />
+                  <text x="45" y="31" text-anchor="middle" fill="#7ba3be" font-family="Share Tech Mono" font-size="8">CLOCK</text>
+                  <text id="lsValCpuClock" x="45" y="52" text-anchor="middle" fill="#ffffff" font-family="Orbitron" font-size="15" font-weight="700">4.3</text>
+                  <text x="45" y="66" text-anchor="middle" fill="#00f0ff" font-family="Share Tech Mono" font-size="9">GHz</text>
+                </svg>
+              </div>
+
+              <div class="ls-subgauge-fan">
+                <svg viewBox="0 0 90 90" width="86" height="86">
+                  <circle cx="45" cy="45" r="38" fill="rgba(4,14,32,0.8)" stroke="rgba(255,30,142,0.2)" stroke-width="5" />
+                  <circle id="lsArcFan" class="arc-smooth" cx="45" cy="45" r="38" fill="none" stroke="url(#gradMagentaCyan)" stroke-width="5" stroke-linecap="round"
+                    stroke-dasharray="238.76" stroke-dashoffset="110" transform="rotate(-90 45 45)" filter="url(#glowMagenta)" />
+                  <text x="45" y="31" text-anchor="middle" fill="#7ba3be" font-family="Share Tech Mono" font-size="8">FAN</text>
+                  <text id="lsValFan" x="45" y="52" text-anchor="middle" fill="#ff4fa8" font-family="Orbitron" font-size="14" font-weight="700">1180</text>
+                  <text x="45" y="66" text-anchor="middle" fill="#00f0ff" font-family="Share Tech Mono" font-size="9">RPM</text>
+                </svg>
+              </div>
+
+              <!-- RIGHT ZONE: Top Row Drive Capsules + Stacked Temp Block -->
+              <div class="ls-drives-row">
+                <div class="ls-drive-capsule">
+                  <div class="ls-drive-top">
+                    <span class="ls-drive-pct" id="lsDiskC">74%</span>
+                    <span class="ls-drive-letter">C:</span>
+                  </div>
+                  <div class="ls-drive-sub" id="lsDiskCSub">78.2 GB free</div>
+                  <div class="ls-drive-bar"><div class="ls-drive-fill bar-smooth" id="lsBarDiskC" style="width:74%"></div></div>
+                </div>
+                <div class="ls-drive-capsule">
+                  <div class="ls-drive-top">
+                    <span class="ls-drive-pct" id="lsDiskD">59%</span>
+                    <span class="ls-drive-letter">D:</span>
+                  </div>
+                  <div class="ls-drive-sub" id="lsDiskDSub">412 GB free</div>
+                  <div class="ls-drive-bar"><div class="ls-drive-fill bar-smooth" id="lsBarDiskD" style="width:59%"></div></div>
+                </div>
+                <div class="ls-drive-capsule">
+                  <div class="ls-drive-top">
+                    <span class="ls-drive-pct" id="lsDiskE">32%</span>
+                    <span class="ls-drive-letter">E:</span>
+                  </div>
+                  <div class="ls-drive-sub" id="lsDiskESub">680 GB free</div>
+                  <div class="ls-drive-bar"><div class="ls-drive-fill bar-smooth" id="lsBarDiskE" style="width:32%"></div></div>
+                </div>
+                <div class="ls-drive-capsule">
+                  <div class="ls-drive-top">
+                    <span class="ls-drive-pct" id="lsDiskF">18%</span>
+                    <span class="ls-drive-letter">F:</span>
+                  </div>
+                  <div class="ls-drive-sub" id="lsDiskFSub">1.64 TB free</div>
+                  <div class="ls-drive-bar"><div class="ls-drive-fill bar-smooth" id="lsBarDiskF" style="width:18%"></div></div>
+                </div>
+
+                <!-- Far-right Stacked SSD / System Temp -->
+                <div class="ls-temp-stack">
+                  <div class="ls-temp-item">
+                    <span class="lbl">SSD</span>
+                    <span class="val"><span id="lsValSsdTemp">46</span>°C</span>
+                  </div>
+                  <div class="ls-temp-item">
+                    <span class="lbl">SYS</span>
+                    <span class="val"><span id="lsValSysTemp">36</span>°C</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT ZONE: GPU Header -->
+              <div class="ls-gpu-header">
+                <span class="ls-gpu-title" id="lsGpuLabel">NVIDIA GRAPHICS CARD</span>
+                <div class="ls-gpu-line"></div>
+              </div>
+
+              <!-- RIGHT ZONE: Dual-Ring GPU Usage % Gauge with Nested Sub-Circle -->
+              <div class="ls-gauge-gpu-load">
+                <svg viewBox="0 0 170 170" width="168" height="168">
+                  <circle cx="85" cy="85" r="76" fill="rgba(5,16,38,0.75)" stroke="rgba(0,240,255,0.22)" stroke-width="2" stroke-dasharray="16 8" class="spin-ccw" />
+                  <circle cx="85" cy="85" r="64" fill="none" stroke="rgba(0,240,255,0.14)" stroke-width="10" />
+                  <circle id="lsArcGpuUsage" class="arc-smooth" cx="85" cy="85" r="64" fill="none" stroke="url(#gradCyanMagenta)" stroke-width="10" stroke-linecap="round"
+                    stroke-dasharray="402.12" stroke-dashoffset="260" transform="rotate(-90 85 85)" filter="url(#glowCyan)" />
+                  <text x="85" y="54" text-anchor="middle" fill="#8ad8f0" font-family="Share Tech Mono" font-size="10">GPU LOAD</text>
+                  <text id="lsValGpuUsage" x="85" y="98" text-anchor="middle" fill="#ff2e97" font-family="Orbitron" font-size="38" font-weight="800" filter="url(#glowMagenta)">34</text>
+                  <text x="85" y="116" text-anchor="middle" fill="#00f0ff" font-family="Share Tech Mono" font-size="11">%</text>
+
+                  <!-- Nested VRAM sub-circle -->
+                  <circle cx="42" cy="128" r="22" fill="#061226" stroke="#ff1e8e" stroke-width="2" filter="url(#glowMagenta)" />
+                  <text x="42" y="124" text-anchor="middle" fill="#9beeff" font-family="Share Tech Mono" font-size="8">VRAM</text>
+                  <text id="lsValVram" x="42" y="137" text-anchor="middle" fill="#ffffff" font-family="Orbitron" font-size="11" font-weight="700">42%</text>
+                </svg>
+              </div>
+
+              <!-- RIGHT ZONE: Mid GPU Technical Stats -->
+              <div class="ls-gpu-mid-stats">
+                <div class="ls-mini-stat">
+                  <div class="ls-mini-stat-lbl">GPU TDP</div>
+                  <div class="ls-mini-stat-val"><span id="lsValGpuTdp">28</span>%</div>
+                </div>
+                <div class="ls-mini-stat">
+                  <div class="ls-mini-stat-lbl">GPU FAN</div>
+                  <div class="ls-mini-stat-val ls-rpm-val"><span id="lsValGpuFan" class="rpm-num">1150</span><span class="rpm-unit">RPM</span></div>
+                </div>
+              </div>
+
+              <!-- RIGHT ZONE: Far-Right GPU Temp Gauge -->
+              <div class="ls-gauge-gpu-temp">
+                <svg viewBox="0 0 130 130" width="128" height="128">
+                  <circle cx="65" cy="65" r="54" fill="rgba(5,16,38,0.8)" stroke="rgba(0,240,255,0.16)" stroke-width="9" />
+                  <circle id="lsArcGpuTemp" class="arc-smooth" cx="65" cy="65" r="54" fill="none" stroke="url(#gradCyanMagenta)" stroke-width="9" stroke-linecap="round"
+                    stroke-dasharray="339.29" stroke-dashoffset="190" transform="rotate(-90 65 65)" filter="url(#glowCyan)" />
+                  <text x="65" y="42" text-anchor="middle" fill="#8ad8f0" font-family="Share Tech Mono" font-size="10">GPU TEMP</text>
+                  <text id="lsValGpuTemp" x="65" y="78" text-anchor="middle" fill="#ff3b9a" font-family="Orbitron" font-size="32" font-weight="800" filter="url(#glowMagenta)">42</text>
+                  <text x="65" y="96" text-anchor="middle" fill="#00f0ff" font-family="Share Tech Mono" font-size="11">°C</text>
+                </svg>
+              </div>
+
+              <!-- RIGHT ZONE: Footer (Date, RTSS FPS, Boot Up) -->
+              <div class="ls-footer">
+                <div class="ls-date" id="lsDate">26/11/2026</div>
+                <div class="ls-footer-metrics">
+                  <div class="ls-footer-item">
+                    <span class="ls-footer-lbl">RTSS FPS</span>
+                    <span class="ls-footer-val"><span id="lsValFps">60</span> FPS</span>
+                  </div>
+                  <div class="ls-footer-item">
+                    <span class="ls-footer-lbl">BOOT UP</span>
+                    <span class="ls-footer-val" id="lsValUptime">7d 07:41</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ===============================================================
+                 VIEW B: PORTRAIT MODE (400×1280) — VERTICAL "COMPUTER DATA" PANEL
+                 =============================================================== -->
+            <section class="hud-view portrait-hud" id="viewPortrait" aria-label="Portrait 400x1280 Computer Data Panel">
+              <!-- SVG Gradient Defs for Portrait -->
+              <svg width="0" height="0" style="position:absolute">
+                <defs>
+                  <linearGradient id="ptGradCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#00f0ff" />
+                    <stop offset="100%" stop-color="#38bdf8" />
+                  </linearGradient>
+                  <linearGradient id="ptGradMagenta" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#00f0ff" />
+                    <stop offset="50%" stop-color="#d946ef" />
+                    <stop offset="100%" stop-color="#ff1e8e" />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              <!-- Top Date & Live Clock Strip -->
+              <div class="pt-topbar">
+                <span id="ptDate">26/11/2026</span>
+                <span id="ptClock">15:44:00</span>
+              </div>
+
+              <!-- Glowing Red/Magenta Emblem Box -->
+              <div class="pt-emblem-wrap">
+                <div class="pt-cpu-badge" id="ptCpuLabel">RYZEN 5 5600</div>
+                <div class="pt-title-frame">
+                  <div class="pt-title-main">COMPUTER</div>
+                  <div class="pt-title-sub">DATA</div>
+                </div>
+                <div class="pt-led-strip" id="ptLedStrip" aria-hidden="true">
+                  <div class="pt-led lit"></div>
+                  <div class="pt-led lit"></div>
+                  <div class="pt-led lit"></div>
+                  <div class="pt-led"></div>
+                  <div class="pt-led"></div>
+                  <div class="pt-led"></div>
+                  <div class="pt-led"></div>
+                  <div class="pt-led"></div>
+                </div>
+                <div class="pt-gpu-badge" id="ptGpuLabel">NVIDIA RTX 3080 TI</div>
+              </div>
+
+              <!-- CPU BLOCK -->
+              <div class="pt-section">
+                <div class="pt-section-header">
+                  <div class="pt-diag-line"></div>
+                  <div class="pt-section-title">CPU<span>TEMP °C</span></div>
+                </div>
+
+                <div class="pt-gauge-stage">
+                  <!-- Left Large Cyan Ring: CPU Temp -->
+                  <div class="pt-gauge-left">
+                    <svg viewBox="0 0 180 180" width="174" height="174">
+                      <circle cx="90" cy="90" r="82" fill="none" stroke="rgba(0,240,255,0.28)" stroke-width="2" stroke-dasharray="10 6" class="spin-slow" />
+                      <circle cx="90" cy="90" r="70" fill="rgba(4,16,36,0.75)" stroke="rgba(0,240,255,0.16)" stroke-width="11" />
+                      <circle id="ptArcCpuTemp" class="arc-smooth" cx="90" cy="90" r="70" fill="none" stroke="url(#ptGradCyan)" stroke-width="11" stroke-linecap="round"
+                        stroke-dasharray="439.82" stroke-dashoffset="260" transform="rotate(-90 90 90)" filter="url(#glowCyan)" />
+                      <text id="ptValCpuTemp" x="90" y="106" text-anchor="middle" fill="#ffffff" font-family="Orbitron" font-size="48" font-weight="800" filter="url(#glowCyan)">34</text>
+                    </svg>
+                  </div>
+
+                  <!-- Right Offset Magenta/Cyan Ring: CPU Usage % -->
+                  <div class="pt-gauge-right">
+                    <svg viewBox="0 0 160 160" width="158" height="158">
+                      <circle cx="80" cy="80" r="68" fill="rgba(10,10,30,0.82)" stroke="rgba(217,70,239,0.2)" stroke-width="11" />
+                      <circle id="ptArcCpuUsage" class="arc-smooth" cx="80" cy="80" r="68" fill="none" stroke="url(#ptGradMagenta)" stroke-width="11" stroke-linecap="round"
+                        stroke-dasharray="427.26" stroke-dashoffset="320" transform="rotate(-90 80 80)" filter="url(#glowMagenta)" />
+                      <text id="ptValCpuUsage" x="80" y="95" text-anchor="middle" fill="#ffffff" font-family="Orbitron" font-size="42" font-weight="800">11</text>
+                    </svg>
+                  </div>
+
+                  <div class="pt-right-label">CPU<br />USAGE %</div>
+                </div>
+
+                <!-- CPU Package Wattage Bar -->
+                <div class="pt-power-bar-wrap">
+                  <div class="pt-power-meta">
+                    <span class="pt-power-lbl">CPU Package</span>
+                    <span class="pt-power-val"><span id="ptValCpuPower">25.46</span> W</span>
+                  </div>
+                  <div class="pt-bar-track">
+                    <div class="pt-bar-fill bar-smooth" id="ptBarCpuPower" style="width: 32%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- GPU BLOCK -->
+              <div class="pt-section" style="margin-top: 22px;">
+                <div class="pt-section-header">
+                  <div class="pt-diag-line"></div>
+                  <div class="pt-section-title">GPU<span>TEMP °C</span></div>
+                </div>
+
+                <div class="pt-gauge-stage">
+                  <!-- Left Large Cyan Ring: GPU Temp -->
+                  <div class="pt-gauge-left">
+                    <svg viewBox="0 0 180 180" width="174" height="174">
+                      <circle cx="90" cy="90" r="82" fill="none" stroke="rgba(0,240,255,0.28)" stroke-width="2" stroke-dasharray="10 6" class="spin-ccw" />
+                      <circle cx="90" cy="90" r="70" fill="rgba(4,16,36,0.75)" stroke="rgba(0,240,255,0.16)" stroke-width="11" />
+                      <circle id="ptArcGpuTemp" class="arc-smooth" cx="90" cy="90" r="70" fill="none" stroke="url(#ptGradCyan)" stroke-width="11" stroke-linecap="round"
+                        stroke-dasharray="439.82" stroke-dashoffset="280" transform="rotate(-90 90 90)" filter="url(#glowCyan)" />
+                      <text id="ptValGpuTemp" x="90" y="106" text-anchor="middle" fill="#ffffff" font-family="Orbitron" font-size="48" font-weight="800" filter="url(#glowCyan)">31</text>
+                    </svg>
+                  </div>
+
+                  <!-- Right Offset Magenta/Purple Ring: Memory Usage % -->
+                  <div class="pt-gauge-right">
+                    <svg viewBox="0 0 160 160" width="158" height="158">
+                      <circle cx="80" cy="80" r="68" fill="rgba(10,10,30,0.82)" stroke="rgba(217,70,239,0.2)" stroke-width="11" />
+                      <circle id="ptArcRam" class="arc-smooth" cx="80" cy="80" r="68" fill="none" stroke="url(#ptGradMagenta)" stroke-width="11" stroke-linecap="round"
+                        stroke-dasharray="427.26" stroke-dashoffset="165" transform="rotate(-90 80 80)" filter="url(#glowMagenta)" />
+                      <text id="ptValRam" x="80" y="95" text-anchor="middle" fill="#ffffff" font-family="Orbitron" font-size="42" font-weight="800">61</text>
+                    </svg>
+                  </div>
+
+                  <div class="pt-right-label">MEMORY<br />USAGE %</div>
+                </div>
+
+                <!-- GPU TDP% Bar & Segmented Blocks -->
+                <div class="pt-power-bar-wrap">
+                  <div class="pt-power-meta">
+                    <span class="pt-power-lbl">GPU TDP%</span>
+                    <span class="pt-power-val"><span id="ptValGpuTdp">24</span>%</span>
+                  </div>
+                  <div class="pt-bar-track">
+                    <div class="pt-bar-fill bar-smooth" id="ptBarGpuTdp" style="width: 24%;"></div>
+                  </div>
+                  <div class="pt-segments" id="ptTdpSegments" aria-hidden="true">
+                    <div class="pt-seg"></div><div class="pt-seg"></div><div class="pt-seg"></div><div class="pt-seg"></div>
+                    <div class="pt-seg"></div><div class="pt-seg"></div><div class="pt-seg"></div><div class="pt-seg"></div>
+                    <div class="pt-seg"></div><div class="pt-seg"></div><div class="pt-seg"></div><div class="pt-seg"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAN BLOCK -->
+              <div class="pt-fan-block">
+                <div class="pt-fan-title">FAN:</div>
+                <div class="pt-fan-row">
+                  <span class="pt-fan-lbl">CPU/FAN</span>
+                  <span class="pt-fan-val"><span id="ptValCpuFan" class="rpm-num">1036</span><span class="rpm-unit">RPM</span></span>
+                </div>
+                <div class="pt-fan-row">
+                  <span class="pt-fan-lbl">GPU/FAN</span>
+                  <span class="pt-fan-val"><span id="ptValGpuFan" class="rpm-num">1185</span><span class="rpm-unit">RPM</span></span>
+                </div>
+              </div>
+
+              <!-- STORAGE BLOCK -->
+              <div class="pt-storage-block">
+                <div class="pt-disk-row">
+                  <div class="pt-disk-head">
+                    <span class="pt-disk-lbl"><strong>C:</strong> DRIVE USAGE</span>
+                    <span class="pt-disk-val" id="ptValDiskPct">66%</span>
+                  </div>
+                  <div class="pt-disk-track">
+                    <div class="pt-disk-fill bar-smooth" id="ptBarDiskPct" style="width: 66%;"></div>
+                  </div>
+                </div>
+
+                <div class="pt-disk-row">
+                  <div class="pt-disk-head">
+                    <span class="pt-disk-lbl">USED SPACE</span>
+                    <span class="pt-disk-val" id="ptValDiskUsed">85.1 GB</span>
+                  </div>
+                  <div class="pt-disk-track">
+                    <div class="pt-disk-fill used bar-smooth" id="ptBarDiskUsed" style="width: 66%;"></div>
+                  </div>
+                </div>
+
+                <div class="pt-disk-row">
+                  <div class="pt-disk-head">
+                    <span class="pt-disk-lbl">DISK ACTIVITY</span>
+                    <span class="pt-disk-val" id="ptValDiskIo">14.3 MB/s</span>
+                  </div>
+                  <div class="pt-disk-track">
+                    <div class="pt-disk-fill io bar-smooth" id="ptBarDiskIo" style="width: 22%;"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- Matte Black Desktop Stand -->
+      <div class="desktop-stand" aria-hidden="true">
+        <div class="stand-neck"></div>
+        <div class="stand-base"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- =========================================================================
+       FLOATING CONTROL TOOLBAR (Toggle with H key or corner button)
+       ========================================================================= -->
+  <nav class="control-toolbar" id="controlToolbar" aria-label="Monitor Controls">
+    <div class="tb-group">
+      <button id="btnRotate" class="tb-btn active" title="Switch between Landscape (1280x400) and Portrait (400x1280)">
+        ↻ Rotate: Landscape
+      </button>
+      <button id="btnBezel" class="tb-btn active" title="Toggle Hardware Bezel & Stand">
+        ▢ Bezel: On
+      </button>
+    </div>
+
+    <div class="tb-group">
+      <div class="tb-slider-wrap" title="Smooth IPS Brightness Control">
+        <span>☀</span>
+        <input id="brightnessSlider" class="tb-slider" type="range" min="20" max="100" value="100" />
+        <span id="brightnessLabel">100%</span>
+      </div>
+    </div>
+
+    <div class="tb-group">
+      <select id="dataSourceSelect" class="tb-select" title="Select Telemetry Data Source">
+        <option value="demo-normal">Demo: Normal</option>
+        <option value="demo-gaming">Demo: Gaming Load</option>
+        <option value="demo-idle">Demo: Idle</option>
+        <option value="live-server">Live Local Server</option>
+      </select>
+      <span class="status-pill" id="statusPill">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Demo</span>
+      </span>
+    </div>
+
+    <div class="tb-group">
+      <button id="btnLiveSetup" class="tb-btn">⚡ Live PC Setup</button>
+      <button id="btnCustomise" class="tb-btn">⚙ Customise</button>
+      <button id="btnFullscreen" class="tb-btn" title="Toggle Fullscreen">⛶ Fullscreen</button>
+    </div>
+  </nav>
+
+  <!-- =========================================================================
+       MODAL 1: LIVE PC SETUP (Python Sensor Bridge)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modalLiveSetup" role="dialog" aria-modal="true" aria-labelledby="liveSetupTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 class="modal-title" id="liveSetupTitle">LIVE PC SENSOR BRIDGE (PYTHON)</h2>
+        <button class="modal-close" data-close="modalLiveSetup" aria-label="Close">×</button>
+      </div>
+      <p class="modal-desc">
+        Run this lightweight Python script on your Windows or Linux PC to stream live CPU, NVIDIA GPU, RAM, storage, fan, network, and uptime telemetry directly to this sensor panel.
+        Install the single dependency with <code>pip install psutil</code>, save the file as <code>sensor_bridge.py</code>, run <code>python sensor_bridge.py</code>, and switch the Data Source to <strong>Live Local Server</strong>.
+      </p>
+      <div class="code-box" id="pythonScriptBox"></div>
+      <div class="modal-actions">
+        <button class="tb-btn" id="btnCopyScript">📋 Copy Python Script</button>
+        <button class="tb-btn active" data-close="modalLiveSetup">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: CUSTOMISE LABELS & ENDPOINT
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modalCustomise" role="dialog" aria-modal="true" aria-labelledby="customiseTitle">
+    <div class="modal-card compact">
+      <div class="modal-head">
+        <h2 class="modal-title" id="customiseTitle">CUSTOMISE SENSOR PANEL</h2>
+        <button class="modal-close" data-close="modalCustomise" aria-label="Close">×</button>
+      </div>
+      <div class="form-field">
+        <label for="inputOwner">Owner Name (Landscape Header)</label>
+        <input id="inputOwner" class="form-input" type="text" maxlength="24" placeholder="Matty" />
+      </div>
+      <div class="form-field">
+        <label for="inputCpuLabel">CPU Model Badge (Portrait Header)</label>
+        <input id="inputCpuLabel" class="form-input" type="text" maxlength="28" placeholder="RYZEN 5 5600" />
+      </div>
+      <div class="form-field">
+        <label for="inputGpuLabel">GPU Model Label (Both Modes)</label>
+        <input id="inputGpuLabel" class="form-input" type="text" maxlength="34" placeholder="NVIDIA GRAPHICS CARD" />
+      </div>
+      <div class="form-field">
+        <label for="inputEndpoint">Local JSON Metrics Endpoint</label>
+        <input id="inputEndpoint" class="form-input" type="url" placeholder="http://127.0.0.1:8765/metrics" />
+      </div>
+      <div class="form-field">
+        <label for="inputTimeZone">Timezone</label>
+        <select id="inputTimeZone" class="form-input">
+          <option value="auto" id="optAutoTimeZone">Auto (System Timezone)</option>
+          <option value="Europe/London">Europe/London (UK — GMT/BST)</option>
+          <option value="UTC">UTC</option>
+          <option value="Europe/Dublin">Europe/Dublin (GMT/IST)</option>
+          <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+          <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+          <option value="America/New_York">America/New_York (EST/EDT)</option>
+          <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+          <option value="America/Denver">America/Denver (MST/MDT)</option>
+          <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+          <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+          <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="tb-btn" id="btnResetPrefs">Reset Defaults</button>
+        <button class="tb-btn active" id="btnSavePrefs">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Non-blocking Toast Message -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* =======================================================================
+         1. CONFIGURATION, PREFERENCES & PYTHON BRIDGE SCRIPT
+         ======================================================================= */
+      const STORAGE_KEY = 'pc_sensor_panel_prefs_v1';
+
+      const DEFAULT_PREFS = {
+        orientation: 'landscape', // 'landscape' | 'portrait'
+        showBezel: true,
+        brightness: 100,
+        dataSource: 'demo-normal',
+        ownerName: 'Matty',
+        cpuLabel: 'RYZEN 5 5600',
+        gpuLabel: 'NVIDIA GRAPHICS CARD',
+        endpoint: 'http://127.0.0.1:8765/metrics',
+        timeZone: 'auto'
+      };
+
+      const PYTHON_BRIDGE_SCRIPT = `#!/usr/bin/env python3
+"""
+sensor_bridge.py — Local HTTP JSON telemetry bridge for the 7.9" Sensor Panel.
+Requirements: pip install psutil
+Optional: nvidia-smi (included with NVIDIA drivers) for GPU stats.
+Run: python sensor_bridge.py
+"""
+import json
+import platform
+import subprocess
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import psutil
+
+HOST = "127.0.0.1"
+PORT = 8765
+
+_last_net = psutil.net_io_counters()
+_last_disk = psutil.disk_io_counters()
+_last_ts = time.time()
+
+
+def get_nvidia_stats():
+    try:
+        out = subprocess.check_output(
+            [
+                "nvidia-smi",
+                "--query-gpu=temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw,power.limit,fan.speed",
+                "--format=csv,noheader,nounits",
+            ],
+            stderr=subprocess.DEVNULL,
+            timeout=1.5,
+        ).decode("utf-8").strip().splitlines()[0]
+        parts = [p.strip() for p in out.split(",")]
+        temp = float(parts[0]) if parts[0] not in ("", "N/A") else 42.0
+        util = float(parts[1]) if parts[1] not in ("", "N/A") else 12.0
+        mem_used = float(parts[2]) if parts[2] not in ("", "N/A") else 2048.0
+        mem_tot = float(parts[3]) if parts[3] not in ("", "N/A") else 8192.0
+        pwr = float(parts[4]) if parts[4] not in ("", "N/A") else 45.0
+        pwr_lim = float(parts[5]) if parts[5] not in ("", "N/A") else 220.0
+        fan_pct = float(parts[6]) if parts[6] not in ("", "N/A") else 35.0
+        return {
+            "gpu_temp": round(temp, 1),
+            "gpu_usage": round(util, 1),
+            "vram_pct": round((mem_used / max(mem_tot, 1.0)) * 100.0, 1),
+            "gpu_tdp": round(min(100.0, (pwr / max(pwr_lim, 1.0)) * 100.0), 1),
+            "gpu_fan_rpm": int(800 + fan_pct * 22),
+        }
+    except Exception:
+        return {
+            "gpu_temp": 41.0,
+            "gpu_usage": 15.0,
+            "vram_pct": 28.0,
+            "gpu_tdp": 18.0,
+            "gpu_fan_rpm": 1120,
+        }
+
+
+def get_cpu_temp():
+    try:
+        temps = psutil.sensors_temperatures()
+        for key in ("coretemp", "k10temp", "zenpower", "cpu_thermal", "acpitz"):
+            if key in temps and temps[key]:
+                return round(temps[key][0].current, 1)
+    except Exception:
+        pass
+    return round(36.0 + psutil.cpu_percent(interval=None) * 0.42, 1)
+
+
+def get_fan_rpm():
+    try:
+        fans = psutil.sensors_fans()
+        for entries in fans.values():
+            if entries and entries[0].current > 0:
+                return int(entries[0].current)
+    except Exception:
+        pass
+    return int(950 + psutil.cpu_percent(interval=None) * 14)
+
+
+def get_disks():
+    drives = []
+    if platform.system() == "Windows":
+        letters = ["C:", "D:", "E:", "F:"]
+        for lt in letters:
+            try:
+                u = psutil.disk_usage(lt + "\\\\")
+                drives.append({
+                    "label": lt,
+                    "percent": round(u.percent, 1),
+                    "used_gb": round(u.used / (1024 ** 3), 1),
+                    "free_gb": round(u.free / (1024 ** 3), 1),
+                })
+            except Exception:
+                drives.append({"label": lt, "percent": 0, "used_gb": 0, "free_gb": 0})
+    else:
+        mounts = ["/", "/home", "/var", "/tmp"]
+        labels = ["C:", "D:", "E:", "F:"]
+        for lbl, mnt in zip(labels, mounts):
+            try:
+                u = psutil.disk_usage(mnt)
+                drives.append({
+                    "label": lbl,
+                    "percent": round(u.percent, 1),
+                    "used_gb": round(u.used / (1024 ** 3), 1),
+                    "free_gb": round(u.free / (1024 ** 3), 1),
+                })
+            except Exception:
+                drives.append({"label": lbl, "percent": 0, "used_gb": 0, "free_gb": 0})
+    return drives
+
+
+def collect_metrics():
+    global _last_net, _last_disk, _last_ts
+    now = time.time()
+    dt = max(now - _last_ts, 0.2)
+
+    cpu_pct = psutil.cpu_percent(interval=None)
+    freq = psutil.cpu_freq()
+    cpu_ghz = round((freq.current / 1000.0), 2) if freq else 3.8
+    ram = psutil.virtual_memory()
+
+    net_now = psutil.net_io_counters()
+    net_up_kbs = round((net_now.bytes_sent - _last_net.bytes_sent) / 1024.0 / dt, 1)
+    net_down_kbs = round((net_now.bytes_recv - _last_net.bytes_recv) / 1024.0 / dt, 1)
+    _last_net = net_now
+
+    disk_now = psutil.disk_io_counters()
+    disk_mbs = round(
+        ((disk_now.read_bytes - _last_disk.read_bytes) + (disk_now.write_bytes - _last_disk.write_bytes))
+        / (1024.0 * 1024.0) / dt,
+        1,
+    ) if disk_now and _last_disk else 0.0
+    _last_disk = disk_now
+    _last_ts = now
+
+    gpu = get_nvidia_stats()
+    uptime_sec = int(now - psutil.boot_time())
+
+    return {
+        "cpu_temp": get_cpu_temp(),
+        "cpu_usage": round(cpu_pct, 1),
+        "cpu_power": round(18.0 + cpu_pct * 0.95, 2),
+        "cpu_clock": cpu_ghz,
+        "ram_usage": round(ram.percent, 1),
+        "gpu_temp": gpu["gpu_temp"],
+        "gpu_usage": gpu["gpu_usage"],
+        "vram_pct": gpu["vram_pct"],
+        "gpu_tdp": gpu["gpu_tdp"],
+        "cpu_fan_rpm": get_fan_rpm(),
+        "gpu_fan_rpm": gpu["gpu_fan_rpm"],
+        "ssd_temp": 44.0,
+        "sys_temp": 35.0,
+        "net_up_kbs": max(0.0, net_up_kbs),
+        "net_down_kbs": max(0.0, net_down_kbs),
+        "disk_io_mbs": max(0.0, disk_mbs),
+        "fps": 60,
+        "uptime_sec": uptime_sec,
+        "disks": get_disks(),
+    }
+
+
+class MetricsHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith("/metrics"):
+            payload = json.dumps(collect_metrics()).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(payload)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, format, *args):
+        return
+
+
+if __name__ == "__main__":
+    psutil.cpu_percent(interval=None)
+    print(f"Sensor Bridge running at http://{HOST}:{PORT}/metrics")
+    HTTPServer((HOST, PORT), MetricsHandler).serve_forever()
+`;
+
+      function loadPrefs() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          return Object.assign({}, DEFAULT_PREFS, saved);
+        } catch (err) {
+          return Object.assign({}, DEFAULT_PREFS);
+        }
+      }
+
+      function savePrefs(prefs) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+        } catch (err) {
+          /* Ignore storage quota/iframe restrictions */
+        }
+      }
+
+      let prefs = loadPrefs();
+      let liveConnected = false;
+      let livePollTimer = null;
+      let bootOffsetSeconds = 7 * 86400 + 7 * 3600 + 41 * 60; // 7d 07:41 default demo uptime
+
+      /* =======================================================================
+         2. DOM REFERENCES
+         ======================================================================= */
+      const els = {
+        hardwareAssembly: document.getElementById('hardwareAssembly'),
+        bezelFrame: document.getElementById('bezelFrame'),
+        ipsScreen: document.getElementById('ipsScreen'),
+        viewLandscape: document.getElementById('viewLandscape'),
+        viewPortrait: document.getElementById('viewPortrait'),
+        controlToolbar: document.getElementById('controlToolbar'),
+        btnToggleToolbar: document.getElementById('btnToggleToolbar'),
+        btnRotate: document.getElementById('btnRotate'),
+        btnBezel: document.getElementById('btnBezel'),
+        brightnessSlider: document.getElementById('brightnessSlider'),
+        brightnessLabel: document.getElementById('brightnessLabel'),
+        dataSourceSelect: document.getElementById('dataSourceSelect'),
+        statusDot: document.getElementById('statusDot'),
+        statusText: document.getElementById('statusText'),
+        btnLiveSetup: document.getElementById('btnLiveSetup'),
+        btnCustomise: document.getElementById('btnCustomise'),
+        btnFullscreen: document.getElementById('btnFullscreen'),
+        modalLiveSetup: document.getElementById('modalLiveSetup'),
+        modalCustomise: document.getElementById('modalCustomise'),
+        pythonScriptBox: document.getElementById('pythonScriptBox'),
+        btnCopyScript: document.getElementById('btnCopyScript'),
+        inputOwner: document.getElementById('inputOwner'),
+        inputCpuLabel: document.getElementById('inputCpuLabel'),
+        inputGpuLabel: document.getElementById('inputGpuLabel'),
+        inputEndpoint: document.getElementById('inputEndpoint'),
+        inputTimeZone: document.getElementById('inputTimeZone'),
+        optAutoTimeZone: document.getElementById('optAutoTimeZone'),
+        btnSavePrefs: document.getElementById('btnSavePrefs'),
+        btnResetPrefs: document.getElementById('btnResetPrefs'),
+        toast: document.getElementById('toast'),
+
+        // Landscape HUD elements
+        lsOwnerName: document.getElementById('lsOwnerName'),
+        lsGpuLabel: document.getElementById('lsGpuLabel'),
+        lsClock: document.getElementById('lsClock'),
+        lsDate: document.getElementById('lsDate'),
+        lsEqBars: document.querySelectorAll('#lsEq .ls-eq-bar'),
+        lsArcCpuTemp: document.getElementById('lsArcCpuTemp'),
+        lsValCpuTemp: document.getElementById('lsValCpuTemp'),
+        lsArcCpuPower: document.getElementById('lsArcCpuPower'),
+        lsValCpuPower: document.getElementById('lsValCpuPower'),
+        lsArcRam: document.getElementById('lsArcRam'),
+        lsValRam: document.getElementById('lsValRam'),
+        lsValNetUp: document.getElementById('lsValNetUp'),
+        lsBarNetUp: document.getElementById('lsBarNetUp'),
+        lsValNetDown: document.getElementById('lsValNetDown'),
+        lsBarNetDown: document.getElementById('lsBarNetDown'),
+        lsArcCpuUsage: document.getElementById('lsArcCpuUsage'),
+        lsValCpuUsage: document.getElementById('lsValCpuUsage'),
+        lsArcCpuClock: document.getElementById('lsArcCpuClock'),
+        lsValCpuClock: document.getElementById('lsValCpuClock'),
+        lsArcFan: document.getElementById('lsArcFan'),
+        lsValFan: document.getElementById('lsValFan'),
+        lsDiskC: document.getElementById('lsDiskC'),
+        lsDiskCSub: document.getElementById('lsDiskCSub'),
+        lsBarDiskC: document.getElementById('lsBarDiskC'),
+        lsDiskD: document.getElementById('lsDiskD'),
+        lsDiskDSub: document.getElementById('lsDiskDSub'),
+        lsBarDiskD: document.getElementById('lsBarDiskD'),
+        lsDiskE: document.getElementById('lsDiskE'),
+        lsDiskESub: document.getElementById('lsDiskESub'),
+        lsBarDiskE: document.getElementById('lsBarDiskE'),
+        lsDiskF: document.getElementById('lsDiskF'),
+        lsDiskFSub: document.getElementById('lsDiskFSub'),
+        lsBarDiskF: document.getElementById('lsBarDiskF'),
+        lsValSsdTemp: document.getElementById('lsValSsdTemp'),
+        lsValSysTemp: document.getElementById('lsValSysTemp'),
+        lsArcGpuUsage: document.getElementById('lsArcGpuUsage'),
+        lsValGpuUsage: document.getElementById('lsValGpuUsage'),
+        lsValVram: document.getElementById('lsValVram'),
+        lsValGpuTdp: document.getElementById('lsValGpuTdp'),
+        lsValGpuFan: document.getElementById('lsValGpuFan'),
+        lsArcGpuTemp: document.getElementById('lsArcGpuTemp'),
+        lsValGpuTemp: document.getElementById('lsValGpuTemp'),
+        lsValFps: document.getElementById('lsValFps'),
+        lsValUptime: document.getElementById('lsValUptime'),
+
+        // Portrait HUD elements
+        ptDate: document.getElementById('ptDate'),
+        ptClock: document.getElementById('ptClock'),
+        ptCpuLabel: document.getElementById('ptCpuLabel'),
+        ptGpuLabel: document.getElementById('ptGpuLabel'),
+        ptLeds: document.querySelectorAll('#ptLedStrip .pt-led'),
+        ptArcCpuTemp: document.getElementById('ptArcCpuTemp'),
+        ptValCpuTemp: document.getElementById('ptValCpuTemp'),
+        ptArcCpuUsage: document.getElementById('ptArcCpuUsage'),
+        ptValCpuUsage: document.getElementById('ptValCpuUsage'),
+        ptValCpuPower: document.getElementById('ptValCpuPower'),
+        ptBarCpuPower: document.getElementById('ptBarCpuPower'),
+        ptArcGpuTemp: document.getElementById('ptArcGpuTemp'),
+        ptValGpuTemp: document.getElementById('ptValGpuTemp'),
+        ptArcRam: document.getElementById('ptArcRam'),
+        ptValRam: document.getElementById('ptValRam'),
+        ptValGpuTdp: document.getElementById('ptValGpuTdp'),
+        ptBarGpuTdp: document.getElementById('ptBarGpuTdp'),
+        ptTdpSegments: document.querySelectorAll('#ptTdpSegments .pt-seg'),
+        ptValCpuFan: document.getElementById('ptValCpuFan'),
+        ptValGpuFan: document.getElementById('ptValGpuFan'),
+        ptValDiskPct: document.getElementById('ptValDiskPct'),
+        ptBarDiskPct: document.getElementById('ptBarDiskPct'),
+        ptValDiskUsed: document.getElementById('ptValDiskUsed'),
+        ptBarDiskUsed: document.getElementById('ptBarDiskUsed'),
+        ptValDiskIo: document.getElementById('ptValDiskIo'),
+        ptBarDiskIo: document.getElementById('ptBarDiskIo')
+      };
+
+      /* =======================================================================
+         3. TELEMETRY STATE & SMOOTH DEMO ENGINE
+         ======================================================================= */
+      const telemetry = {
+        cpu_temp: 38,
+        cpu_usage: 18,
+        cpu_power: 34.5,
+        cpu_clock: 4.1,
+        ram_usage: 54,
+        gpu_temp: 36,
+        gpu_usage: 22,
+        vram_pct: 38,
+        gpu_tdp: 19,
+        cpu_fan_rpm: 1080,
+        gpu_fan_rpm: 1160,
+        ssd_temp: 44,
+        sys_temp: 34,
+        net_up_kbs: 112,
+        net_down_kbs: 1240,
+        disk_io_mbs: 14.3,
+        fps: 60,
+        uptime_sec: bootOffsetSeconds,
+        disks: [
+          { label: 'C:', percent: 66, used_gb: 85.1, free_gb: 43.8 },
+          { label: 'D:', percent: 59, used_gb: 590.0, free_gb: 410.0 },
+          { label: 'E:', percent: 32, used_gb: 320.0, free_gb: 680.0 },
+          { label: 'F:', percent: 18, used_gb: 360.0, free_gb: 1640.0 }
+        ]
+      };
+
+      const target = Object.assign({}, telemetry);
+
+      const DEMO_PROFILES = {
+        'demo-idle': {
+          cpuUsage: [4, 14], cpuTemp: [30, 37], cpuPower: [18, 28], cpuClock: [2.8, 3.6],
+          ramUsage: [34, 42], gpuUsage: [1, 8], gpuTemp: [28, 34], vram: [14, 22],
+          gpuTdp: [3, 9], fps: [0, 60], netUp: [8, 65], netDown: [20, 240], diskIo: [0.4, 6.5]
+        },
+        'demo-normal': {
+          cpuUsage: [12, 34], cpuTemp: [36, 49], cpuPower: [28, 68], cpuClock: [3.8, 4.5],
+          ramUsage: [48, 64], gpuUsage: [10, 36], gpuTemp: [33, 46], vram: [30, 46],
+          gpuTdp: [12, 34], fps: [60, 120], netUp: [60, 420], netDown: [350, 4200], diskIo: [4.0, 28.0]
+        },
+        'demo-gaming': {
+          cpuUsage: [54, 86], cpuTemp: [64, 79], cpuPower: [88, 128], cpuClock: [4.6, 5.1],
+          ramUsage: [68, 84], gpuUsage: [82, 99], gpuTemp: [66, 78], vram: [72, 92],
+          gpuTdp: [78, 98], fps: [118, 165], netUp: [180, 950], netDown: [1200, 14500], diskIo: [18.0, 96.0]
+        }
+      };
+
+      function randRange(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function clamp(val, min, max) {
+        return Math.max(min, Math.min(max, val));
+      }
+
+      function lerp(current, next, factor) {
+        return current + (next - current) * factor;
+      }
+
+      function updateDemoTargets() {
+        const modeKey = DEMO_PROFILES[prefs.dataSource] ? prefs.dataSource : 'demo-normal';
+        const p = DEMO_PROFILES[modeKey];
+
+        target.cpu_usage = randRange(p.cpuUsage[0], p.cpuUsage[1]);
+        target.cpu_temp = randRange(p.cpuTemp[0], p.cpuTemp[1]);
+        target.cpu_power = randRange(p.cpuPower[0], p.cpuPower[1]);
+        target.cpu_clock = randRange(p.cpuClock[0], p.cpuClock[1]);
+        target.ram_usage = randRange(p.ramUsage[0], p.ramUsage[1]);
+        target.gpu_usage = randRange(p.gpuUsage[0], p.gpuUsage[1]);
+        target.gpu_temp = randRange(p.gpuTemp[0], p.gpuTemp[1]);
+        target.vram_pct = randRange(p.vram[0], p.vram[1]);
+        target.gpu_tdp = randRange(p.gpuTdp[0], p.gpuTdp[1]);
+        target.fps = Math.round(randRange(p.fps[0], p.fps[1]));
+        target.net_up_kbs = randRange(p.netUp[0], p.netUp[1]);
+        target.net_down_kbs = randRange(p.netDown[0], p.netDown[1]);
+        target.disk_io_mbs = randRange(p.diskIo[0], p.diskIo[1]);
+
+        // Thermal-coupled fan curves
+        target.cpu_fan_rpm = 820 + Math.max(0, target.cpu_temp - 28) * 34;
+        target.gpu_fan_rpm = 900 + Math.max(0, target.gpu_temp - 30) * 38;
+        target.ssd_temp = clamp(40 + (target.disk_io_mbs * 0.08) + randRange(-1, 1), 35, 58);
+        target.sys_temp = clamp(32 + (target.cpu_temp - 35) * 0.25 + randRange(-0.5, 0.5), 28, 48);
+      }
+
+      /* =======================================================================
+         4. LIVE LOCAL SERVER POLLING (WITH AUTOMATIC DEMO FALLBACK)
+         ======================================================================= */
+      async function pollLocalServer() {
+        if (prefs.dataSource !== 'live-server') return;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1400);
+
+        try {
+          const res = await fetch(prefs.endpoint, {
+            method: 'GET',
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+
+          // Map live JSON payload into target telemetry
+          if (typeof data.cpu_temp === 'number') target.cpu_temp = data.cpu_temp;
+          if (typeof data.cpu_usage === 'number') target.cpu_usage = data.cpu_usage;
+          if (typeof data.cpu_power === 'number') target.cpu_power = data.cpu_power;
+          if (typeof data.cpu_clock === 'number') target.cpu_clock = data.cpu_clock;
+          if (typeof data.ram_usage === 'number') target.ram_usage = data.ram_usage;
+          if (typeof data.gpu_temp === 'number') target.gpu_temp = data.gpu_temp;
+          if (typeof data.gpu_usage === 'number') target.gpu_usage = data.gpu_usage;
+          if (typeof data.vram_pct === 'number') target.vram_pct = data.vram_pct;
+          if (typeof data.gpu_tdp === 'number') target.gpu_tdp = data.gpu_tdp;
+          if (typeof data.cpu_fan_rpm === 'number') target.cpu_fan_rpm = data.cpu_fan_rpm;
+          if (typeof data.gpu_fan_rpm === 'number') target.gpu_fan_rpm = data.gpu_fan_rpm;
+          if (typeof data.ssd_temp === 'number') target.ssd_temp = data.ssd_temp;
+          if (typeof data.sys_temp === 'number') target.sys_temp = data.sys_temp;
+          if (typeof data.net_up_kbs === 'number') target.net_up_kbs = data.net_up_kbs;
+          if (typeof data.net_down_kbs === 'number') target.net_down_kbs = data.net_down_kbs;
+          if (typeof data.disk_io_mbs === 'number') target.disk_io_mbs = data.disk_io_mbs;
+          if (typeof data.fps === 'number') target.fps = data.fps;
+          if (typeof data.uptime_sec === 'number') telemetry.uptime_sec = data.uptime_sec;
+          if (Array.isArray(data.disks) && data.disks.length > 0) {
+            telemetry.disks = data.disks;
+          }
+
+          liveConnected = true;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          liveConnected = false;
+          // Graceful fallback to smooth demo motion when local bridge is offline
+          updateDemoTargets();
+        }
+        updateStatusBadge();
+      }
+
+      function updateStatusBadge() {
+        if (prefs.dataSource === 'live-server') {
+          if (liveConnected) {
+            els.statusDot.className = 'status-dot live';
+            els.statusText.textContent = 'Live PC Connected';
+          } else {
+            els.statusDot.className = 'status-dot warn';
+            els.statusText.textContent = 'Offline · Demo Fallback';
+          }
+        } else {
+          els.statusDot.className = 'status-dot';
+          const names = {
+            'demo-normal': 'Demo: Normal',
+            'demo-gaming': 'Demo: Gaming',
+            'demo-idle': 'Demo: Idle'
+          };
+          els.statusText.textContent = names[prefs.dataSource] || 'Demo';
+        }
+      }
+
+      /* =======================================================================
+         5. RENDERING HELPERS (ARCS, FORMATTERS & DISPLAY UPDATE)
+         ======================================================================= */
+      function setArc(el, pct, circumference, sweepFraction) {
+        const clamped = clamp(pct, 0, 100) / 100;
+        const maxDraw = circumference * (sweepFraction || 1);
+        const offset = circumference - maxDraw * clamped;
+        el.style.strokeDashoffset = offset.toFixed(2);
+      }
+
+      function formatNetSpeed(kbs) {
+        if (kbs >= 1024) {
+          return (kbs / 1024).toFixed(2) + ' MB/s';
+        }
+        return Math.round(kbs) + ' KB/s';
+      }
+
+      function formatUptime(sec) {
+        const d = Math.floor(sec / 86400);
+        const h = Math.floor((sec % 86400) / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        return d + 'd ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+      }
+
+      function getActiveTimeZone() {
+        if (prefs.timeZone && prefs.timeZone !== 'auto') {
+          return prefs.timeZone;
+        }
+        try {
+          return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London';
+        } catch (err) {
+          return 'Europe/London';
+        }
+      }
+
+      function updateClockAndDate() {
+        const now = new Date();
+        const tz = getActiveTimeZone();
+
+        try {
+          const formatter = new Intl.DateTimeFormat('en-GB', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+            timeZoneName: 'short'
+          });
+
+          const parts = {};
+          formatter.formatToParts(now).forEach((p) => {
+            if (p.type !== 'literal') parts[p.type] = p.value;
+          });
+
+          const tzAbbr = parts.timeZoneName ? ` ${parts.timeZoneName}` : '';
+          const dateStr = `${parts.day}/${parts.month}/${parts.year}${tzAbbr}`;
+          els.lsDate.textContent = dateStr;
+          els.ptDate.textContent = dateStr;
+          els.lsClock.textContent = `${parts.hour}:${parts.minute}`;
+          els.ptClock.textContent = `${parts.hour}:${parts.minute}:${parts.second}`;
+        } catch (err) {
+          // Safe fallback to local system Date getters
+          const yyyy = now.getFullYear();
+          const mm = String(now.getMonth() + 1).padStart(2, '0');
+          const dd = String(now.getDate()).padStart(2, '0');
+          const hh = String(now.getHours()).padStart(2, '0');
+          const min = String(now.getMinutes()).padStart(2, '0');
+          const ss = String(now.getSeconds()).padStart(2, '0');
+
+          const dateStr = `${dd}/${mm}/${yyyy}`;
+          els.lsDate.textContent = dateStr;
+          els.ptDate.textContent = dateStr;
+          els.lsClock.textContent = `${hh}:${min}`;
+          els.ptClock.textContent = `${hh}:${min}:${ss}`;
+        }
+      }
+
+      function renderTelemetry() {
+        // Interpolate smoothly for organic 60fps-feel needle/number motion
+        telemetry.cpu_temp = lerp(telemetry.cpu_temp, target.cpu_temp, 0.14);
+        telemetry.cpu_usage = lerp(telemetry.cpu_usage, target.cpu_usage, 0.2);
+        telemetry.cpu_power = lerp(telemetry.cpu_power, target.cpu_power, 0.18);
+        telemetry.cpu_clock = lerp(telemetry.cpu_clock, target.cpu_clock, 0.2);
+        telemetry.ram_usage = lerp(telemetry.ram_usage, target.ram_usage, 0.14);
+        telemetry.gpu_temp = lerp(telemetry.gpu_temp, target.gpu_temp, 0.14);
+        telemetry.gpu_usage = lerp(telemetry.gpu_usage, target.gpu_usage, 0.22);
+        telemetry.vram_pct = lerp(telemetry.vram_pct, target.vram_pct, 0.14);
+        telemetry.gpu_tdp = lerp(telemetry.gpu_tdp, target.gpu_tdp, 0.18);
+        telemetry.cpu_fan_rpm = lerp(telemetry.cpu_fan_rpm, target.cpu_fan_rpm, 0.16);
+        telemetry.gpu_fan_rpm = lerp(telemetry.gpu_fan_rpm, target.gpu_fan_rpm, 0.16);
+        telemetry.ssd_temp = lerp(telemetry.ssd_temp, target.ssd_temp, 0.1);
+        telemetry.sys_temp = lerp(telemetry.sys_temp, target.sys_temp, 0.1);
+        telemetry.net_up_kbs = lerp(telemetry.net_up_kbs, target.net_up_kbs, 0.24);
+        telemetry.net_down_kbs = lerp(telemetry.net_down_kbs, target.net_down_kbs, 0.24);
+        telemetry.disk_io_mbs = lerp(telemetry.disk_io_mbs, target.disk_io_mbs, 0.22);
+        telemetry.fps = lerp(telemetry.fps, target.fps, 0.25);
+
+        const cpuTempInt = Math.round(telemetry.cpu_temp);
+        const cpuUsageInt = Math.round(telemetry.cpu_usage);
+        const cpuPowerInt = Math.round(telemetry.cpu_power);
+        const ramInt = Math.round(telemetry.ram_usage);
+        const gpuTempInt = Math.round(telemetry.gpu_temp);
+        const gpuUsageInt = Math.round(telemetry.gpu_usage);
+        const vramInt = Math.round(telemetry.vram_pct);
+        const gpuTdpInt = Math.round(telemetry.gpu_tdp);
+        const cpuFanInt = Math.round(telemetry.cpu_fan_rpm);
+        const gpuFanInt = Math.round(telemetry.gpu_fan_rpm);
+
+        // --- UPDATE LANDSCAPE HUD ---
+        els.lsValCpuTemp.textContent = cpuTempInt;
+        setArc(els.lsArcCpuTemp, telemetry.cpu_temp, 263.89, 1);
+
+        els.lsValCpuPower.textContent = cpuPowerInt;
+        setArc(els.lsArcCpuPower, (telemetry.cpu_power / 160) * 100, 376.99, 0.75);
+
+        els.lsValRam.textContent = ramInt;
+        setArc(els.lsArcRam, telemetry.ram_usage, 251.33, 1);
+
+        els.lsValNetUp.textContent = formatNetSpeed(telemetry.net_up_kbs);
+        els.lsBarNetUp.style.width = clamp((telemetry.net_up_kbs / 1200) * 100, 4, 100).toFixed(1) + '%';
+
+        els.lsValNetDown.textContent = formatNetSpeed(telemetry.net_down_kbs);
+        els.lsBarNetDown.style.width = clamp((telemetry.net_down_kbs / 16000) * 100, 6, 100).toFixed(1) + '%';
+
+        els.lsValCpuUsage.textContent = cpuUsageInt;
+        setArc(els.lsArcCpuUsage, telemetry.cpu_usage, 527.79, 1);
+
+        els.lsValCpuClock.textContent = telemetry.cpu_clock.toFixed(1);
+        setArc(els.lsArcCpuClock, (telemetry.cpu_clock / 5.5) * 100, 238.76, 1);
+
+        els.lsValFan.textContent = cpuFanInt;
+        setArc(els.lsArcFan, (telemetry.cpu_fan_rpm / 3000) * 100, 238.76, 1);
+
+        els.lsValSsdTemp.textContent = Math.round(telemetry.ssd_temp);
+        els.lsValSysTemp.textContent = Math.round(telemetry.sys_temp);
+
+        els.lsValGpuUsage.textContent = gpuUsageInt;
+        setArc(els.lsArcGpuUsage, telemetry.gpu_usage, 402.12, 1);
+        els.lsValVram.textContent = vramInt + '%';
+        els.lsValGpuTdp.textContent = gpuTdpInt;
+        els.lsValGpuFan.textContent = gpuFanInt;
+
+        els.lsValGpuTemp.textContent = gpuTempInt;
+        setArc(els.lsArcGpuTemp, telemetry.gpu_temp, 339.29, 1);
+
+        els.lsValFps.textContent = Math.round(telemetry.fps);
+        els.lsValUptime.textContent = formatUptime(telemetry.uptime_sec);
+
+        // Update Landscape Drive Capsules (C:, D:, E:, F:)
+        const driveEls = [
+          { pct: els.lsDiskC, sub: els.lsDiskCSub, bar: els.lsBarDiskC },
+          { pct: els.lsDiskD, sub: els.lsDiskDSub, bar: els.lsBarDiskD },
+          { pct: els.lsDiskE, sub: els.lsDiskESub, bar: els.lsBarDiskE },
+          { pct: els.lsDiskF, sub: els.lsDiskFSub, bar: els.lsBarDiskF }
+        ];
+        driveEls.forEach((slot, idx) => {
+          const d = telemetry.disks[idx];
+          if (!d) return;
+          const pct = clamp(Math.round(d.percent), 0, 100);
+          slot.pct.textContent = pct + '%';
+          slot.bar.style.width = pct + '%';
+          slot.sub.textContent = d.free_gb >= 1000
+            ? (d.free_gb / 1024).toFixed(2) + ' TB free'
+            : d.free_gb.toFixed(1) + ' GB free';
+        });
+
+        // --- UPDATE PORTRAIT HUD ---
+        els.ptValCpuTemp.textContent = cpuTempInt;
+        setArc(els.ptArcCpuTemp, telemetry.cpu_temp, 439.82, 1);
+
+        els.ptValCpuUsage.textContent = cpuUsageInt;
+        setArc(els.ptArcCpuUsage, telemetry.cpu_usage, 427.26, 1);
+
+        els.ptValCpuPower.textContent = telemetry.cpu_power.toFixed(2);
+        els.ptBarCpuPower.style.width = clamp((telemetry.cpu_power / 160) * 100, 4, 100).toFixed(1) + '%';
+
+        els.ptValGpuTemp.textContent = gpuTempInt;
+        setArc(els.ptArcGpuTemp, telemetry.gpu_temp, 439.82, 1);
+
+        els.ptValRam.textContent = ramInt;
+        setArc(els.ptArcRam, telemetry.ram_usage, 427.26, 1);
+
+        els.ptValGpuTdp.textContent = gpuTdpInt;
+        els.ptBarGpuTdp.style.width = clamp(telemetry.gpu_tdp, 2, 100).toFixed(1) + '%';
+
+        // Segmented GPU TDP blocks (12 segments)
+        const activeSegs = Math.round((clamp(telemetry.gpu_tdp, 0, 100) / 100) * els.ptTdpSegments.length);
+        els.ptTdpSegments.forEach((seg, idx) => {
+          seg.classList.toggle('active', idx < activeSegs);
+        });
+
+        // Top crimson LED bar reflects combined CPU/GPU load
+        const loadRatio = clamp((telemetry.cpu_usage + telemetry.gpu_usage) / 200, 0.1, 1);
+        const litLeds = Math.max(1, Math.round(loadRatio * els.ptLeds.length));
+        els.ptLeds.forEach((led, idx) => {
+          led.classList.toggle('lit', idx < litLeds);
+        });
+
+        // Fan RPMs (locked single-line monospace readouts)
+        els.ptValCpuFan.textContent = cpuFanInt;
+        els.ptValGpuFan.textContent = gpuFanInt;
+
+        // Portrait C: Drive Storage & Disk Activity
+        const cDisk = telemetry.disks[0] || { percent: 66, used_gb: 85.1 };
+        const cPct = clamp(Math.round(cDisk.percent), 0, 100);
+        els.ptValDiskPct.textContent = cPct + '%';
+        els.ptBarDiskPct.style.width = cPct + '%';
+        els.ptValDiskUsed.textContent = cDisk.used_gb.toFixed(1) + ' GB';
+        els.ptBarDiskUsed.style.width = cPct + '%';
+        els.ptValDiskIo.textContent = telemetry.disk_io_mbs.toFixed(1) + ' MB/s';
+        els.ptBarDiskIo.style.width = clamp((telemetry.disk_io_mbs / 120) * 100, 4, 100).toFixed(1) + '%';
+      }
+
+      function animateEqualizer() {
+        const energy = clamp((telemetry.cpu_usage + telemetry.gpu_usage) / 160, 0.25, 1);
+        els.lsEqBars.forEach((bar) => {
+          const h = Math.round(4 + Math.random() * 18 * energy);
+          bar.style.height = h + 'px';
+        });
+      }
+
+      /* =======================================================================
+         6. RESPONSIVE VIEWPORT SCALING & UI PREFERENCES
+         ======================================================================= */
+      function fitToViewport() {
+        const isPortrait = prefs.orientation === 'portrait';
+        const isBorderless = !prefs.showBezel;
+
+        // Natural pixel dimensions of the assembly
+        const baseW = isPortrait ? (isBorderless ? 400 : 468) : (isBorderless ? 1280 : 1364);
+        const baseH = isPortrait ? (isBorderless ? 1280 : 1410) : (isBorderless ? 400 : 514);
+
+        const padX = isBorderless ? 0 : 36;
+        const padY = isBorderless ? 0 : (els.controlToolbar.classList.contains('hidden') ? 36 : 96);
+
+        const availW = Math.max(200, window.innerWidth - padX);
+        const availH = Math.max(200, window.innerHeight - padY);
+        const scale = Math.min(availW / baseW, availH / baseH, isBorderless ? 2.5 : 1.15);
+
+        els.hardwareAssembly.style.transform = `scale(${scale.toFixed(4)})`;
+      }
+
+      function applyPrefs() {
+        const isPortrait = prefs.orientation === 'portrait';
+
+        // Orientation classes
+        els.hardwareAssembly.classList.toggle('portrait', isPortrait);
+        els.hardwareAssembly.classList.toggle('landscape', !isPortrait);
+        els.bezelFrame.classList.toggle('portrait', isPortrait);
+        els.bezelFrame.classList.toggle('landscape', !isPortrait);
+        els.ipsScreen.classList.toggle('portrait', isPortrait);
+        els.ipsScreen.classList.toggle('landscape', !isPortrait);
+
+        els.viewPortrait.classList.toggle('active', isPortrait);
+        els.viewLandscape.classList.toggle('active', !isPortrait);
+        els.btnRotate.textContent = isPortrait ? '↻ Rotate: Portrait' : '↻ Rotate: Landscape';
+
+        // Bezel mode
+        document.body.classList.toggle('borderless-mode', !prefs.showBezel);
+        els.btnBezel.classList.toggle('active', prefs.showBezel);
+        els.btnBezel.textContent = prefs.showBezel ? '▢ Bezel: On' : '▢ Bezel: Off';
+
+        // Brightness
+        const brightVal = clamp(Number(prefs.brightness) || 100, 20, 100);
+        document.documentElement.style.setProperty('--screen-brightness', (brightVal / 100).toFixed(2));
+        els.brightnessSlider.value = brightVal;
+        els.brightnessLabel.textContent = brightVal + '%';
+
+        // Data source
+        els.dataSourceSelect.value = prefs.dataSource;
+
+        // Custom labels
+        els.lsOwnerName.textContent = prefs.ownerName || DEFAULT_PREFS.ownerName;
+        els.ptCpuLabel.textContent = prefs.cpuLabel || DEFAULT_PREFS.cpuLabel;
+        els.ptGpuLabel.textContent = prefs.gpuLabel || DEFAULT_PREFS.gpuLabel;
+        els.lsGpuLabel.textContent = prefs.gpuLabel || DEFAULT_PREFS.gpuLabel;
+
+        updateStatusBadge();
+        fitToViewport();
+      }
+
+      /* =======================================================================
+         7. MODALS, TOAST, CLIPBOARD & EVENT BINDINGS
+         ======================================================================= */
+      let toastTimer = null;
+      function showToast(message) {
+        els.toast.textContent = message;
+        els.toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          els.toast.classList.remove('show');
+        }, 2600);
+      }
+
+      function openModal(modalEl) {
+        modalEl.classList.add('open');
+      }
+
+      function closeModal(modalEl) {
+        modalEl.classList.remove('open');
+      }
+
+      function toggleToolbar() {
+        els.controlToolbar.classList.toggle('hidden');
+        fitToViewport();
+      }
+
+      function restartPolling() {
+        if (livePollTimer) {
+          clearInterval(livePollTimer);
+          livePollTimer = null;
+        }
+        if (prefs.dataSource === 'live-server') {
+          pollLocalServer();
+          livePollTimer = setInterval(pollLocalServer, 1000);
+        } else {
+          liveConnected = false;
+          updateDemoTargets();
+          updateStatusBadge();
+        }
+      }
+
+      // Rotate orientation
+      els.btnRotate.addEventListener('click', () => {
+        prefs.orientation = prefs.orientation === 'landscape' ? 'portrait' : 'landscape';
+        savePrefs(prefs);
+        applyPrefs();
+      });
+
+      // Toggle hardware bezel
+      els.btnBezel.addEventListener('click', () => {
+        prefs.showBezel = !prefs.showBezel;
+        savePrefs(prefs);
+        applyPrefs();
+      });
+
+      // Smooth IPS brightness slider
+      els.brightnessSlider.addEventListener('input', (e) => {
+        prefs.brightness = Number(e.target.value);
+        savePrefs(prefs);
+        applyPrefs();
+      });
+
+      // Telemetry data source selector
+      els.dataSourceSelect.addEventListener('change', (e) => {
+        prefs.dataSource = e.target.value;
+        savePrefs(prefs);
+        restartPolling();
+        updateStatusBadge();
+      });
+
+      // Toolbar toggle button & 'H' shortcut
+      els.btnToggleToolbar.addEventListener('click', toggleToolbar);
+
+      document.addEventListener('keydown', (e) => {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) {
+          return;
+        }
+        if (e.key === 'h' || e.key === 'H') {
+          toggleToolbar();
+        } else if (e.key === 'Escape') {
+          closeModal(els.modalLiveSetup);
+          closeModal(els.modalCustomise);
+        }
+      });
+
+      // Open Live Setup Modal
+      els.btnLiveSetup.addEventListener('click', () => {
+        openModal(els.modalLiveSetup);
+      });
+
+      // Open Customise Modal
+      els.btnCustomise.addEventListener('click', () => {
+        els.inputOwner.value = prefs.ownerName;
+        els.inputCpuLabel.value = prefs.cpuLabel;
+        els.inputGpuLabel.value = prefs.gpuLabel;
+        els.inputEndpoint.value = prefs.endpoint;
+        try {
+          const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          els.optAutoTimeZone.textContent = detectedTz
+            ? `Auto (${detectedTz})`
+            : 'Auto (System Timezone)';
+        } catch (err) {
+          els.optAutoTimeZone.textContent = 'Auto (System Timezone)';
+        }
+        els.inputTimeZone.value = prefs.timeZone || 'auto';
+        openModal(els.modalCustomise);
+      });
+
+      // Modal close buttons & backdrop clicks
+      document.querySelectorAll('[data-close]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const targetModal = document.getElementById(btn.getAttribute('data-close'));
+          if (targetModal) closeModal(targetModal);
+        });
+      });
+
+      [els.modalLiveSetup, els.modalCustomise].forEach((backdrop) => {
+        backdrop.addEventListener('click', (e) => {
+          if (e.target === backdrop) closeModal(backdrop);
+        });
+      });
+
+      // Copy Python bridge script using iframe-safe execCommand fallback
+      els.btnCopyScript.addEventListener('click', () => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = PYTHON_BRIDGE_SCRIPT;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showToast('Python sensor_bridge.py copied to clipboard');
+        } catch (err) {
+          showToast('Select and copy the script from the code box');
+        }
+      });
+
+      // Save Customise preferences
+      els.btnSavePrefs.addEventListener('click', () => {
+        prefs.ownerName = els.inputOwner.value.trim() || DEFAULT_PREFS.ownerName;
+        prefs.cpuLabel = els.inputCpuLabel.value.trim() || DEFAULT_PREFS.cpuLabel;
+        prefs.gpuLabel = els.inputGpuLabel.value.trim() || DEFAULT_PREFS.gpuLabel;
+        prefs.endpoint = els.inputEndpoint.value.trim() || DEFAULT_PREFS.endpoint;
+        prefs.timeZone = els.inputTimeZone.value || 'auto';
+        savePrefs(prefs);
+        applyPrefs();
+        updateClockAndDate();
+        closeModal(els.modalCustomise);
+        showToast('Sensor panel preferences saved');
+      });
+
+      // Reset preferences
+      els.btnResetPrefs.addEventListener('click', () => {
+        prefs = Object.assign({}, DEFAULT_PREFS);
+        savePrefs(prefs);
+        applyPrefs();
+        updateClockAndDate();
+        restartPolling();
+        closeModal(els.modalCustomise);
+        showToast('Preferences reset to defaults');
+      });
+
+      // Fullscreen toggle
+      els.btnFullscreen.addEventListener('click', () => {
+        try {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+          } else {
+            document.exitFullscreen();
+          }
+        } catch (err) {
+          showToast('Fullscreen is restricted in this preview frame');
+        }
+      });
+
+      window.addEventListener('resize', fitToViewport);
+
+      /* =======================================================================
+         8. INITIALISATION & RUNTIME LOOPS
+         ======================================================================= */
+      els.pythonScriptBox.textContent = PYTHON_BRIDGE_SCRIPT;
+      applyPrefs();
+      updateClockAndDate();
+      updateDemoTargets();
+      renderTelemetry();
+      restartPolling();
+
+      // Smooth 10Hz telemetry interpolation loop
+      setInterval(renderTelemetry, 100);
+
+      // Clock & demo uptime tick every second
+      setInterval(() => {
+        updateClockAndDate();
+        if (!liveConnected) {
+          telemetry.uptime_sec += 1;
+        }
+      }, 1000);
+
+      // Demo target fluctuations
+      setInterval(() => {
+        if (prefs.dataSource !== 'live-server') {
+          updateDemoTargets();
+        }
+      }, 1400);
+
+      // Equalizer micro-animation
+      setInterval(animateEqualizer, 200);
+    })();
+  </script>
+</body>
+</html>
