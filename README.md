@@ -9,3 +9,5 @@ If you have a spare monitor attached to your computer you can use this instead o
 3.  Then launch the web page called **dashboard01.html**
 
 This is the latest version which will be updated soon with a more robust version.
+
+Should work in all operating systems that can run a oython script.  I prefer to use it full screen and without the bezel.  Press h to show and hide the customisation window.
